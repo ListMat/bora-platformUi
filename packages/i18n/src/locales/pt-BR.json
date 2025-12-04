@@ -1,0 +1,57 @@
+{
+  "common": {
+    "loading": "Carregando...",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Deletar",
+    "edit": "Editar",
+    "confirm": "Confirmar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "back": "Voltar",
+    "next": "Próximo",
+    "previous": "Anterior"
+  },
+  "auth": {
+    "signIn": "Entrar",
+    "signOut": "Sair",
+    "signUp": "Cadastrar",
+    "email": "E-mail",
+    "password": "Senha",
+    "forgotPassword": "Esqueci minha senha",
+    "noAccount": "Não tem conta?",
+    "hasAccount": "Já tem conta?"
+  },
+  "lesson": {
+    "title": "Aulas",
+    "schedule": "Agendar Aula",
+    "scheduled": "Agendada",
+    "active": "Em andamento",
+    "finished": "Concluída",
+    "cancelled": "Cancelada",
+    "price": "Preço",
+    "duration": "Duração",
+    "instructor": "Instrutor",
+    "student": "Aluno",
+    "pickupLocation": "Local de partida"
+  },
+  "instructor": {
+    "title": "Instrutores",
+    "available": "Disponível",
+    "unavailable": "Indisponível",
+    "rating": "Avaliação",
+    "totalLessons": "Total de aulas",
+    "basePrice": "Preço base"
+  },
+  "payment": {
+    "title": "Pagamentos",
+    "method": "Método de pagamento",
+    "creditCard": "Cartão de crédito",
+    "pix": "PIX",
+    "boleto": "Boleto",
+    "pending": "Pendente",
+    "completed": "Concluído",
+    "failed": "Falhou",
+    "refunded": "Reembolsado"
+  }
+}

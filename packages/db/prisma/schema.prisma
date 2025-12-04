@@ -1,0 +1,365 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  ADMIN
+  FINANCIAL
+  SUPPORT
+  AUDITOR
+  INSTRUCTOR
+  STUDENT
+}
+
+enum LessonStatus {
+  SCHEDULED
+  ACTIVE
+  FINISHED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  PIX
+  BOLETO
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum InstructorStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  phone         String?
+  role          UserRole  @default(STUDENT)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  student       Student?
+  instructor    Instructor?
+  activityLogs  ActivityLog[]
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Student {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  cpf          String?  @unique
+  dateOfBirth  DateTime?
+  address      String?
+  city         String?
+  state        String?
+  zipCode      String?
+  
+  // Gamificação
+  points       Int      @default(0)
+  level        Int      @default(1)
+  badges       String[] // JSON array de badges
+  
+  // Wallet
+  walletBalance Decimal @default(0) @db.Decimal(10, 2)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessons      Lesson[]
+  payments     Payment[]
+  ratings      Rating[]
+  referrals    Referral[] @relation("Referrer")
+  referredBy   Referral?  @relation("Referred")
+
+  @@index([userId])
+  @@index([cpf])
+  @@map("students")
+}
+
+model Instructor {
+  id                String           @id @default(cuid())
+  userId            String           @unique
+  cpf               String?          @unique
+  cnhNumber         String?          @unique
+  credentialNumber  String?
+  credentialExpiry  DateTime?
+  
+  // Documentos (encriptados)
+  cnhDocument       String?  // URL S3/Supabase
+  credentialDoc     String?  // URL S3/Supabase
+  
+  // Localização
+  latitude          Float?
+  longitude         Float?
+  city              String?
+  state             String?
+  
+  // Preço e disponibilidade
+  basePrice         Decimal  @default(0) @db.Decimal(10, 2)
+  isAvailable       Boolean  @default(false)
+  
+  // Status e métricas
+  status            InstructorStatus @default(PENDING_VERIFICATION)
+  averageRating     Float    @default(0)
+  totalLessons      Int      @default(0)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessons           Lesson[]
+  availability      InstructorAvailability[]
+  ratings           Rating[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([isAvailable])
+  @@map("instructors")
+}
+
+model InstructorAvailability {
+  id           String   @id @default(cuid())
+  instructorId String
+  dayOfWeek    Int      // 0-6 (Sunday-Saturday)
+  startTime    String   // HH:mm format
+  endTime      String   // HH:mm format
+  
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@index([instructorId])
+  @@map("instructor_availability")
+}
+
+model Lesson {
+  id               String       @id @default(cuid())
+  studentId        String
+  instructorId     String
+  
+  // Agendamento
+  scheduledAt      DateTime
+  startedAt        DateTime?
+  endedAt          DateTime?
+  duration         Int?         // minutos
+  
+  // Localização
+  pickupLatitude   Float?
+  pickupLongitude  Float?
+  pickupAddress    String?
+  
+  // Status e preço
+  status           LessonStatus @default(SCHEDULED)
+  price            Decimal      @db.Decimal(10, 2)
+  
+  // Gravação (opcional)
+  recordingUrl     String?
+  
+  // Notas
+  instructorNotes  String?
+  studentNotes     String?
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  student          Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  instructor       Instructor   @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  payment          Payment?
+  rating           Rating?
+
+  @@index([studentId])
+  @@index([instructorId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("lessons")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  lessonId        String        @unique
+  studentId       String
+  
+  amount          Decimal       @db.Decimal(10, 2)
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  
+  // Stripe
+  stripePaymentId String?       @unique
+  stripeCustomerId String?
+  
+  // Pix
+  pixQrCode       String?
+  pixCopyPaste    String?
+  
+  // Metadata
+  metadata        Json?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  lesson          Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  dispute         Dispute?
+
+  @@index([studentId])
+  @@index([status])
+  @@index([stripePaymentId])
+  @@map("payments")
+}
+
+model Dispute {
+  id          String        @id @default(cuid())
+  paymentId   String        @unique
+  
+  reason      String
+  description String?
+  status      DisputeStatus @default(OPEN)
+  
+  // Resolução
+  resolution  String?
+  resolvedAt  DateTime?
+  resolvedBy  String?       // userId do admin
+  
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  payment     Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("disputes")
+}
+
+model Rating {
+  id           String   @id @default(cuid())
+  lessonId     String   @unique
+  studentId    String
+  instructorId String
+  
+  // Avaliação
+  rating       Int      // 1-5
+  comment      String?
+  
+  createdAt    DateTime @default(now())
+
+  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@index([instructorId])
+  @@index([rating])
+  @@map("ratings")
+}
+
+model Referral {
+  id         String   @id @default(cuid())
+  referrerId String
+  referredId String   @unique
+  
+  // Recompensa
+  rewardAmount Decimal @default(0) @db.Decimal(10, 2)
+  rewardPaid   Boolean @default(false)
+  
+  createdAt  DateTime @default(now())
+
+  referrer   Student  @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred   Student  @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // e.g., "VIEW_DOCUMENT", "DELETE_DATA"
+  resource  String?  // e.g., "CNH", "User Profile"
+  metadata  Json?
+  
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+

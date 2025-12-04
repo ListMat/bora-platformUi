@@ -1,0 +1,21 @@
+{
+  "name": "@bora/tsconfig",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "base.json",
+    "nextjs.json",
+    "react-native.json"
+  ],
+  "scripts": {
+    "dev": "echo 'tsconfig ready'",
+    "build": "echo 'tsconfig built'"
+  },
+  "dependencies": {
+    "@trpc/client": "^11.0.0",
+    "@trpc/next": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "@trpc/server": "^11.0.0"
+  }
+}

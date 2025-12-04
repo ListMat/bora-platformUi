@@ -1,0 +1,87 @@
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# testing
+coverage
+*.lcov
+
+# next.js
+.next/
+out/
+build
+dist/
+
+# expo
+.expo/
+dist/
+web-build/
+
+# misc
+.DS_Store
+*.pem
+.idea
+.vscode
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env
+.env*.local
+.env.production
+
+# turbo
+.turbo
+
+# typescript
+*.tsbuildinfo
+
+# prisma
+prisma/migrations
+
+# vercel
+.vercel
+
+# OS
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+logs
+*.log
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Supabase
+.supabase/
+
+# Build outputs
+.expo-shared/
+
+# Testing
+.nyc_output/
+
+# Misc
+*.tsbuildinfo
+
