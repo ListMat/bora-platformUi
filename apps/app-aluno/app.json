@@ -11,7 +11,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#00C853"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bora.aluno"
@@ -22,12 +24,27 @@
         "backgroundColor": "#00C853"
       },
       "package": "com.bora.aluno",
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "scheme": "bora-aluno",
-    "plugins": ["expo-router", "expo-secure-store", "expo-location"]
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-location",
+      "expo-asset",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.bora.aluno",
+          "enableGooglePay": true
+        }
+      ]
+    ]
   }
 }

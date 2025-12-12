@@ -8,21 +8,32 @@
     "dev": "tsc --watch --noEmit",
     "build": "tsc",
     "lint": "eslint . --max-warnings 0",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@bora/db": "workspace:*",
+    "@supabase/supabase-js": "^2.39.0",
     "@trpc/client": "^11.0.0",
     "@trpc/next": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.7.2",
+    "@upstash/redis": "^1.27.0",
     "next-auth": "^4.24.5",
+    "pdfkit": "^0.15.0",
+    "pusher": "^5.2.0",
+    "stripe": "^14.12.0",
     "superjson": "^2.2.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {
     "@bora/tsconfig": "workspace:*",
+    "@types/pdfkit": "^0.13.4",
     "eslint": "^8.57.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
   }
 }

@@ -57,6 +57,32 @@ enum InstructorStatus {
   SUSPENDED
 }
 
+enum VehicleCategory {
+  HATCH
+  SEDAN
+  SUV
+  PICKUP
+  SPORTIVO
+  COMPACTO
+  ELETRICO
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATICO
+  CVT
+  SEMI_AUTOMATICO
+}
+
+enum FuelType {
+  GASOLINA
+  ETANOL
+  FLEX
+  DIESEL
+  ELETRICO
+  HIBRIDO
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -77,6 +103,7 @@ model User {
   student       Student?
   instructor    Instructor?
   activityLogs  ActivityLog[]
+  vehicles      Vehicle[]
 
   @@index([email])
   @@index([role])
@@ -145,12 +172,14 @@ model Student {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lessons      Lesson[]
-  payments     Payment[]
-  ratings      Rating[]
-  referrals    Referral[] @relation("Referrer")
-  referredBy   Referral?  @relation("Referred")
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessons           Lesson[]
+  payments          Payment[]
+  ratings           Rating[]
+  referrals         Referral[]       @relation("Referrer")
+  referredBy        Referral?        @relation("Referred")
+  bundlePurchases   BundlePurchase[]
+  skillEvaluations  SkillEvaluation[]
 
   @@index([userId])
   @@index([cpf])
@@ -184,13 +213,20 @@ model Instructor {
   averageRating     Float    @default(0)
   totalLessons      Int      @default(0)
   
+  // Stripe Connect
+  stripeAccountId      String?  @unique
+  stripeOnboarded      Boolean  @default(false)
+  stripeChargesEnabled Boolean  @default(false)
+  stripePayoutsEnabled Boolean  @default(false)
+  
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   lessons           Lesson[]
   availability      InstructorAvailability[]
   ratings           Rating[]
+  skillEvaluations  SkillEvaluation[]
 
   @@index([userId])
   @@index([status])
@@ -227,12 +263,24 @@ model Lesson {
   pickupLongitude  Float?
   pickupAddress    String?
   
+  // Localização em tempo real (instrutor)
+  currentLatitude  Float?
+  currentLongitude Float?
+  
   // Status e preço
   status           LessonStatus @default(SCHEDULED)
   price            Decimal      @db.Decimal(10, 2)
   
+  // Bundle payment
+  usedBundleCredit Boolean      @default(false)
+  bundlePurchaseId String?
+  
   // Gravação (opcional)
   recordingUrl     String?
+  recordingConsent Boolean      @default(false)
+  
+  // Recibo (obrigatório)
+  receiptUrl       String?
   
   // Notas
   instructorNotes  String?
@@ -241,10 +289,12 @@ model Lesson {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  student          Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  instructor       Instructor   @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  student          Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  instructor       Instructor         @relation(fields: [instructorId], references: [id], onDelete: Cascade)
   payment          Payment?
   rating           Rating?
+  chatMessages     ChatMessage[]
+  skillEvaluations SkillEvaluation[]
 
   @@index([studentId])
   @@index([instructorId])
@@ -279,6 +329,7 @@ model Payment {
   lesson          Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
   dispute         Dispute?
+  split           PaymentSplit?
 
   @@index([studentId])
   @@index([status])
@@ -361,5 +412,259 @@ model ActivityLog {
   @@index([userId])
   @@index([createdAt])
   @@map("activity_logs")
+}
+
+// ==================== NOVOS MODELOS - FASE 1 ====================
+
+model Bundle {
+  id          String   @id @default(cuid())
+  name        String   // "Pacote 5 Aulas", "Pacote 20 Aulas Premium"
+  description String?
+  
+  // Configuração
+  totalLessons Int      // Quantidade de créditos
+  price        Decimal  @db.Decimal(10, 2)
+  discount     Decimal  @default(0) @db.Decimal(5, 2) // % desconto
+  
+  // Validade (opcional)
+  expiryDays   Int?     // Dias para expirar após compra
+  
+  // Status
+  isActive     Boolean  @default(true)
+  featured     Boolean  @default(false) // Destacar na UI
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  purchases    BundlePurchase[]
+
+  @@index([isActive, featured])
+  @@map("bundles")
+}
+
+model BundlePurchase {
+  id              String        @id @default(cuid())
+  studentId       String
+  bundleId        String
+  
+  // Créditos
+  totalCredits    Int           // Créditos totais comprados
+  usedCredits     Int           @default(0)
+  remainingCredits Int          // Calculado: totalCredits - usedCredits
+  
+  // Pagamento
+  amount          Decimal       @db.Decimal(10, 2)
+  paymentId       String?       @unique
+  paymentStatus   PaymentStatus @default(PENDING)
+  
+  // Validade
+  expiresAt       DateTime?
+  
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  student         Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  bundle          Bundle        @relation(fields: [bundleId], references: [id])
+  payment         BundlePayment?
+
+  @@index([studentId, paymentStatus])
+  @@index([expiresAt])
+  @@map("bundle_purchases")
+}
+
+model BundlePayment {
+  id                 String             @id @default(cuid())
+  bundlePurchaseId   String             @unique
+  
+  amount             Decimal            @db.Decimal(10, 2)
+  method             PaymentMethod
+  status             PaymentStatus      @default(PENDING)
+  
+  // Stripe
+  stripePaymentId    String?            @unique
+  stripeCustomerId   String?
+  
+  // Pix
+  pixQrCode          String?
+  pixCopyPaste       String?
+  
+  metadata           Json?
+  
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  bundlePurchase     BundlePurchase     @relation(fields: [bundlePurchaseId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([stripePaymentId])
+  @@map("bundle_payments")
+}
+
+model ChatMessage {
+  id         String   @id @default(cuid())
+  lessonId   String
+  senderId   String   // userId do remetente
+  
+  content    String   @db.Text
+  
+  // Status
+  isRead     Boolean  @default(false)
+  readAt     DateTime?
+  
+  createdAt  DateTime @default(now())
+
+  lesson     Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([lessonId, createdAt])
+  @@index([senderId])
+  @@map("chat_messages")
+}
+
+// ==================== NOVOS MODELOS - FASE 2 ====================
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   // "Baliza", "Conversão", "Controle de Embreagem"
+  description String?
+  category    String   // "BASIC", "INTERMEDIATE", "ADVANCED"
+  
+  // Peso para cálculo de progresso geral
+  weight      Int      @default(1)
+  
+  // Ordem de exibição
+  order       Int      @default(0)
+  
+  isActive    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  evaluations SkillEvaluation[]
+
+  @@index([category, order])
+  @@map("skills")
+}
+
+model SkillEvaluation {
+  id           String   @id @default(cuid())
+  lessonId     String
+  studentId    String
+  skillId      String
+  instructorId String
+  
+  // Avaliação (1-5 estrelas)
+  rating       Int      // 1 = Precisa melhorar, 5 = Excelente
+  
+  // Comentário opcional do instrutor
+  comment      String?
+  
+  createdAt    DateTime @default(now())
+
+  lesson       Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  student      Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  skill        Skill      @relation(fields: [skillId], references: [id])
+  instructor   Instructor @relation(fields: [instructorId], references: [id])
+
+  @@unique([lessonId, skillId]) // Uma avaliação por skill por aula
+  @@index([studentId, skillId])
+  @@index([instructorId])
+  @@map("skill_evaluations")
+}
+
+// ==================== NOVOS MODELOS - FASE 3 ====================
+
+model PaymentSplit {
+  id                String   @id @default(cuid())
+  paymentId         String   @unique
+  
+  // Valores
+  totalAmount       Decimal  @db.Decimal(10, 2)
+  platformFee       Decimal  @db.Decimal(10, 2)  // Taxa da plataforma
+  instructorAmount  Decimal  @db.Decimal(10, 2)  // Valor do instrutor
+  
+  // Stripe
+  transferId        String?  @unique  // ID do Transfer para instrutor
+  transferStatus    String?  // "pending", "paid", "failed"
+  
+  // Timestamps
+  transferredAt     DateTime?
+  createdAt         DateTime @default(now())
+
+  payment           Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([transferStatus])
+  @@map("payment_splits")
+}
+
+model CancellationPolicy {
+  id                String   @id @default(cuid())
+  lessonId          String   @unique
+  
+  // Policy details
+  cancelledBy       String   // "STUDENT" or "INSTRUCTOR"
+  cancelledAt       DateTime
+  scheduledTime     DateTime
+  hoursBeforeLesson Int      // Quantas horas antes da aula foi cancelado
+  
+  // Penalidades
+  penaltyApplied    Boolean  @default(false)
+  penaltyAmount     Decimal  @default(0) @db.Decimal(10, 2)
+  penaltyPaidTo     String?  // userId de quem recebeu
+  
+  reason            String?
+  
+  createdAt         DateTime @default(now())
+
+  @@index([cancelledBy])
+  @@index([cancelledAt])
+  @@map("cancellation_policies")
+}
+
+// ==================== VEÍCULOS ====================
+
+model Vehicle {
+  id               String            @id @default(cuid())
+  userId           String
+  
+  // Dados básicos
+  brand            String            // Toyota, Honda, VW, etc.
+  model            String            // Corolla, Civic, Gol, etc.
+  year             Int               // 1980-2026
+  color            String            // Branco, Preto, etc.
+  plateLastFour    String            // 4 últimos caracteres
+  photoUrl         String            // Foto principal (obrigatória)
+  
+  // Especificações
+  category         VehicleCategory
+  transmission     TransmissionType
+  fuel             FuelType
+  engine           String            // "1.0", "2.0 Flex", "Elétrico"
+  horsePower       Int?              // 140
+  
+  // Duplo-pedal (obrigatório para instrutor)
+  hasDualPedal     Boolean           @default(false)
+  pedalPhotoUrl    String?           // Foto do pedal (obrigatória se hasDualPedal)
+  
+  // Opções do instrutor
+  acceptStudentCar Boolean           @default(false)  // Só para instrutor
+  
+  // Segurança (array JSON)
+  safetyFeatures   String[]          // ["ABS", "Air-bag duplo", etc.]
+  
+  // Conforto (array JSON)
+  comfortFeatures  String[]          // ["Ar-digital", "Bluetooth", etc.]
+  
+  // Status
+  status           String            @default("active")  // active/inactive
+  
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  
+  // Relações
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@map("vehicles")
 }
 

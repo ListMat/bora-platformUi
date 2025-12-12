@@ -53,6 +53,7 @@ export const lessonRouter = router({
     .input(
       z.object({
         lessonId: z.string(),
+        recordingConsent: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -61,10 +62,40 @@ export const lessonRouter = router({
         data: {
           status: LessonStatus.ACTIVE,
           startedAt: new Date(),
+          recordingConsent: input.recordingConsent || false,
         },
       });
 
       return lesson;
+    }),
+
+  // Atualizar URL de gravação (se habilitada)
+  updateRecording: instructorProcedure
+    .input(
+      z.object({
+        lessonId: z.string(),
+        recordingUrl: z.string().url(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+      });
+
+      if (!lesson) {
+        throw new Error("Lesson not found");
+      }
+
+      if (!lesson.recordingConsent) {
+        throw new Error("Recording not authorized for this lesson");
+      }
+
+      const updatedLesson = await ctx.prisma.lesson.update({
+        where: { id: input.lessonId },
+        data: { recordingUrl: input.recordingUrl },
+      });
+
+      return updatedLesson;
     }),
 
   // Finalizar aula (instrutor)
@@ -78,6 +109,10 @@ export const lessonRouter = router({
     .mutation(async ({ ctx, input }) => {
       const startedLesson = await ctx.prisma.lesson.findUnique({
         where: { id: input.lessonId },
+        include: {
+          student: { include: { user: true } },
+          instructor: { include: { user: true } },
+        },
       });
 
       if (!startedLesson?.startedAt) {
@@ -88,13 +123,38 @@ export const lessonRouter = router({
         (new Date().getTime() - startedLesson.startedAt.getTime()) / 1000 / 60
       );
 
+      const endedAt = new Date();
+
+      // Gerar recibo PDF
+      const { generateReceipt, generateReceiptFilename } = await import("../modules/receiptGenerator");
+      const { uploadReceipt } = await import("../modules/supabaseStorage");
+
+      const pdfBuffer = await generateReceipt({
+        lessonId: input.lessonId,
+        studentName: startedLesson.student.user.name || "Aluno",
+        studentCPF: startedLesson.student.cpf || undefined,
+        instructorName: startedLesson.instructor.user.name || "Instrutor",
+        instructorCNH: startedLesson.instructor.cnhNumber || undefined,
+        instructorCredential: startedLesson.instructor.credentialNumber || undefined,
+        scheduledAt: startedLesson.scheduledAt,
+        startedAt: startedLesson.startedAt,
+        endedAt: endedAt,
+        duration: duration,
+        price: Number(startedLesson.price),
+        pickupAddress: startedLesson.pickupAddress || "",
+      });
+
+      const filename = generateReceiptFilename(input.lessonId);
+      const receiptUrl = await uploadReceipt(input.lessonId, pdfBuffer, filename);
+
       const lesson = await ctx.prisma.lesson.update({
         where: { id: input.lessonId },
         data: {
           status: LessonStatus.FINISHED,
-          endedAt: new Date(),
+          endedAt: endedAt,
           duration,
           instructorNotes: input.instructorNotes,
+          receiptUrl: receiptUrl,
         },
       });
 
@@ -107,6 +167,10 @@ export const lessonRouter = router({
           },
         },
       });
+
+      // Processar gamificação
+      const { processLessonCompletion } = await import("../modules/gamification");
+      await processLessonCompletion(startedLesson.student.userId, input.lessonId, endedAt);
 
       return lesson;
     }),
@@ -223,6 +287,77 @@ export const lessonRouter = router({
           status: LessonStatus.CANCELLED,
         },
       });
+
+      return lesson;
+    }),
+
+  // Atualizar localização do instrutor em tempo real
+  updateLocation: instructorProcedure
+    .input(
+      z.object({
+        lessonId: z.string(),
+        latitude: z.number(),
+        longitude: z.number(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Verificar se a aula pertence ao instrutor
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      const lesson = await ctx.prisma.lesson.findFirst({
+        where: {
+          id: input.lessonId,
+          instructorId: user?.instructor?.id,
+        },
+      });
+
+      if (!lesson) {
+        throw new Error("Lesson not found or unauthorized");
+      }
+
+      const updatedLesson = await ctx.prisma.lesson.update({
+        where: { id: input.lessonId },
+        data: {
+          currentLatitude: input.latitude,
+          currentLongitude: input.longitude,
+        },
+      });
+
+      return updatedLesson;
+    }),
+
+  // Buscar detalhes da aula (para tela ao vivo)
+  getById: protectedProcedure
+    .input(
+      z.object({
+        lessonId: z.string(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+        include: {
+          student: {
+            include: {
+              user: true,
+            },
+          },
+          instructor: {
+            include: {
+              user: true,
+            },
+          },
+          payment: true,
+          rating: true,
+        },
+      });
+
+      if (!lesson) {
+        throw new Error("Lesson not found");
+      }
 
       return lesson;
     }),

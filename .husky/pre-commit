@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
+# Run lint-staged with optimizations:
+# - Uses internal cache (enabled by default)
+# - Processes files in parallel when possible
 pnpm lint-staged
 

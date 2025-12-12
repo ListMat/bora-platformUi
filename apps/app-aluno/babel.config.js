@@ -3,7 +3,8 @@ module.exports = function (api) {
   return {
     presets: ["babel-preset-expo"],
     plugins: [
-      "expo-router/babel",
+      // expo-router/babel is deprecated in SDK 50+
+      // babel-preset-expo already includes expo-router support
       [
         "module-resolver",
         {
