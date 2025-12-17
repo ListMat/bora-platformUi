@@ -1,6 +1,8 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { trpc } from "@/lib/trpc";
 import { useRouter } from "expo-router";
+import { colors, spacing, radius, typography } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function LessonsScreen() {
   const router = useRouter();
@@ -9,7 +11,8 @@ export default function LessonsScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#00C853" />
+        <ActivityIndicator size="large" color={colors.background.brandPrimary} />
+        <Text style={styles.loadingText}>Carregando aulas...</Text>
       </View>
     );
   }
@@ -17,6 +20,7 @@ export default function LessonsScreen() {
   if (error) {
     return (
       <View style={styles.centered}>
+        <Ionicons name="alert-circle-outline" size={48} color={colors.text.error} />
         <Text style={styles.errorText}>Erro ao carregar aulas: {error.message}</Text>
       </View>
     );
@@ -26,11 +30,11 @@ export default function LessonsScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "SCHEDULED": return "#FFA500";
-      case "ACTIVE": return "#00C853";
-      case "FINISHED": return "#666";
-      case "CANCELLED": return "#FF0000";
-      default: return "#999";
+      case "SCHEDULED": return colors.text.warning;
+      case "ACTIVE": return colors.background.brandPrimary;
+      case "FINISHED": return colors.text.secondary;
+      case "CANCELLED": return colors.text.error;
+      default: return colors.text.tertiary;
     }
   };
 
@@ -45,7 +49,7 @@ export default function LessonsScreen() {
   };
 
   const renderLesson = ({ item }: any) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.lessonCard}
       onPress={() => {
         if (item.status === "ACTIVE" || item.status === "SCHEDULED") {
@@ -54,21 +58,38 @@ export default function LessonsScreen() {
       }}
     >
       <View style={styles.lessonHeader}>
-        <Text style={styles.instructorName}>{item.instructor.user.name}</Text>
+        <View style={styles.lessonInfo}>
+          <Text style={styles.instructorName}>
+            {item.instructor?.user?.name || "Instrutor"}
+          </Text>
+          <View style={styles.lessonMeta}>
+            <Ionicons name="calendar-outline" size={14} color={colors.text.tertiary} />
+            <Text style={styles.lessonDate}>
+              {new Date(item.scheduledAt).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "long",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
+        </View>
         <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{getStatusLabel(item.status)}</Text>
         </View>
       </View>
-      <Text style={styles.lessonDate}>
-        {new Date(item.scheduledAt).toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: 'long',
-          hour: '2-digit',
-          minute: '2-digit',
-        })}
-      </Text>
-      <Text style={styles.lessonAddress}>{item.pickupAddress}</Text>
-      <Text style={styles.lessonPrice}>R$ {Number(item.price).toFixed(2)}</Text>
+      {item.pickupAddress && (
+        <View style={styles.lessonMeta}>
+          <Ionicons name="location-outline" size={14} color={colors.text.tertiary} />
+          <Text style={styles.lessonAddress}>{item.pickupAddress}</Text>
+        </View>
+      )}
+      <View style={styles.lessonFooter}>
+        <Text style={styles.lessonPrice}>R$ {Number(item.price || 0).toFixed(2)}</Text>
+        {(item.status === "ACTIVE" || item.status === "SCHEDULED") && (
+          <Ionicons name="chevron-forward" size={20} color={colors.text.tertiary} />
+        )}
+      </View>
     </TouchableOpacity>
   );
 
@@ -76,9 +97,10 @@ export default function LessonsScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Minhas Aulas</Text>
       {lessons.length === 0 ? (
-      <View style={styles.placeholder}>
-        <Text style={styles.placeholderText}>Você ainda não tem aulas agendadas</Text>
-      </View>
+        <View style={styles.placeholder}>
+          <Ionicons name="calendar-outline" size={64} color={colors.text.tertiary} />
+          <Text style={styles.placeholderText}>Você ainda não tem aulas agendadas</Text>
+        </View>
       ) : (
         <FlatList
           data={lessons}
@@ -94,18 +116,20 @@ export default function LessonsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
+    backgroundColor: colors.background.primary,
+    padding: spacing["2xl"],
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: spacing["2xl"],
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 16,
+    fontSize: typography.fontSize["2xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.primary,
+    marginBottom: spacing.xl,
   },
   placeholder: {
     flex: 1,
@@ -113,59 +137,89 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   placeholderText: {
-    fontSize: 16,
-    color: "#999",
+    fontSize: typography.fontSize.base,
+    color: colors.text.tertiary,
+    marginTop: spacing.lg,
+    textAlign: "center",
+  },
+  loadingText: {
+    marginTop: spacing.lg,
+    fontSize: typography.fontSize.base,
+    color: colors.text.secondary,
   },
   errorText: {
-    fontSize: 16,
-    color: "#FF0000",
+    fontSize: typography.fontSize.base,
+    color: colors.text.error,
     textAlign: "center",
-    paddingHorizontal: 20,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing["2xl"],
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: spacing["2xl"],
   },
   lessonCard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius["2xl"],
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
     borderLeftWidth: 4,
-    borderLeftColor: "#00C853",
+    borderLeftColor: colors.background.brandPrimary,
+    borderWidth: 1,
+    borderColor: colors.border.secondary,
   },
   lessonHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
+    alignItems: "flex-start",
+    marginBottom: spacing.md,
+  },
+  lessonInfo: {
+    flex: 1,
   },
   instructorName: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing.xs,
   },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
+  lessonMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.xs,
   },
   lessonDate: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginLeft: spacing.xs,
   },
   lessonAddress: {
-    fontSize: 14,
-    color: "#999",
-    marginBottom: 8,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    marginLeft: spacing.xs,
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+  statusText: {
+    color: colors.text.white,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  lessonFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.secondary,
   },
   lessonPrice: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#00C853",
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.background.brandPrimary,
   },
 });

@@ -1,9 +1,12 @@
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
+import Mapbox, { Camera, PointAnnotation } from "@rnmapbox/maps";
+import { DARK_MAP_STYLE } from "@/lib/mapbox";
+import { colors, radius, spacing, typography } from "@/theme";
 
 export default function LessonLiveScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -45,7 +48,7 @@ export default function LessonLiveScreen() {
   if (isLoading || !lesson) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#00C853" />
+        <ActivityIndicator size="large" color={colors.background.brandPrimary} />
       </View>
     );
   }
@@ -85,49 +88,64 @@ export default function LessonLiveScreen() {
     // TODO: Implementar SOS (item 7)
   };
 
+  const centerLocation = userLocation || instructorLocation || 
+    (lesson.pickupLatitude && lesson.pickupLongitude 
+      ? { latitude: lesson.pickupLatitude, longitude: lesson.pickupLongitude }
+      : null);
+
   return (
     <View style={styles.container}>
       {/* Mapa */}
-      {userLocation && (
-        <MapView
+      {centerLocation && (
+        <Mapbox.MapView
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={{
-            latitude: userLocation.latitude,
-            longitude: userLocation.longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          }}
+          styleURL={DARK_MAP_STYLE}
+          logoEnabled={false}
+          attributionEnabled={false}
         >
-          {/* Marcador do aluno */}
-          <Marker
-            coordinate={userLocation}
-            title="Você"
-            pinColor="#00C853"
+          <Camera
+            defaultSettings={{
+              centerCoordinate: [centerLocation.longitude, centerLocation.latitude],
+              zoomLevel: 14,
+            }}
           />
+          
+          {/* Marcador do aluno */}
+          {userLocation && (
+            <PointAnnotation
+              id="user-location"
+              coordinate={[userLocation.longitude, userLocation.latitude]}
+            >
+              <View style={styles.userMarker}>
+                <View style={styles.userMarkerDot} />
+              </View>
+            </PointAnnotation>
+          )}
 
           {/* Marcador do instrutor */}
           {instructorLocation && (
-            <Marker
-              coordinate={instructorLocation}
-              title={lesson.instructor.user.name || "Instrutor"}
-              description="Instrutor"
-              pinColor="#FF6D00"
-            />
+            <PointAnnotation
+              id="instructor-location"
+              coordinate={[instructorLocation.longitude, instructorLocation.latitude]}
+            >
+              <View style={styles.instructorMarker}>
+                <Ionicons name="person" size={20} color={colors.text.white} />
+              </View>
+            </PointAnnotation>
           )}
 
           {/* Marcador do pickup */}
           {lesson.pickupLatitude && lesson.pickupLongitude && (
-            <Marker
-              coordinate={{
-                latitude: lesson.pickupLatitude,
-                longitude: lesson.pickupLongitude,
-              }}
-              title="Local de encontro"
-              pinColor="#FFA500"
-            />
+            <PointAnnotation
+              id="pickup-location"
+              coordinate={[lesson.pickupLongitude, lesson.pickupLatitude]}
+            >
+              <View style={styles.pickupMarker}>
+                <Ionicons name="location" size={20} color={colors.text.white} />
+              </View>
+            </PointAnnotation>
           )}
-        </MapView>
+        </Mapbox.MapView>
       )}
 
       {/* Info Card */}
@@ -171,6 +189,7 @@ export default function LessonLiveScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background.primary,
   },
   centered: {
     flex: 1,
@@ -181,10 +200,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoCard: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    backgroundColor: colors.background.secondary,
+    borderTopLeftRadius: radius["3xl"],
+    borderTopRightRadius: radius["3xl"],
+    padding: spacing["2xl"],
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -194,75 +213,130 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
+    borderWidth: 1,
+    borderColor: colors.border.secondary,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: spacing.lg,
   },
   statusText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#00C853",
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.background.brandPrimary,
   },
   sosButton: {
-    backgroundColor: "#FF0000",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: colors.text.error,
+    paddingHorizontal: spacing["2xl"],
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
   },
   sosText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 14,
+    color: colors.text.white,
+    fontWeight: typography.fontWeight.bold,
+    fontSize: typography.fontSize.sm,
   },
   instructorInfo: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   instructorName: {
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.primary,
   },
   rating: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.secondary,
   },
   address: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
   },
   time: {
-    fontSize: 14,
-    color: "#999",
-    marginBottom: 16,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    marginBottom: spacing.xl,
   },
   cancelButton: {
-    backgroundColor: "#f9f9f9",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: colors.background.tertiary,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#FF0000",
+    borderColor: colors.text.error,
   },
   cancelButtonText: {
-    color: "#FF0000",
-    fontSize: 16,
-    fontWeight: "600",
+    color: colors.text.error,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
   rateButton: {
-    backgroundColor: "#00C853",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: colors.background.brandPrimary,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
     alignItems: "center",
   },
   rateButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    color: colors.text.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  userMarker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.background.brandPrimary,
+    borderWidth: 3,
+    borderColor: colors.text.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  userMarkerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.text.white,
+  },
+  instructorMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FF6D00",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: colors.text.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  pickupMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFA500",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: colors.text.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });

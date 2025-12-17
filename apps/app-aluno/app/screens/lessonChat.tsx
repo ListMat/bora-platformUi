@@ -14,6 +14,7 @@ import { trpc } from "@/lib/trpc";
 import { useState, useEffect, useRef } from "react";
 import Pusher from "pusher-js/react-native";
 import * as SecureStore from "expo-secure-store";
+import { colors, spacing, radius, typography } from "@/theme";
 
 export default function LessonChatScreen() {
   const { lessonId } = useLocalSearchParams<{ lessonId: string }>();
@@ -94,7 +95,7 @@ export default function LessonChatScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#00C853" />
+        <ActivityIndicator size="large" color={colors.background.brandPrimary} />
       </View>
     );
   }
@@ -125,6 +126,7 @@ export default function LessonChatScreen() {
         <TextInput
           style={styles.input}
           placeholder="Digite sua mensagem..."
+          placeholderTextColor={colors.text.placeholder}
           value={message}
           onChangeText={setMessage}
           multiline
@@ -145,59 +147,96 @@ export default function LessonChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
-  messagesList: { padding: 16, flexGrow: 1 },
-  messageBubble: { maxWidth: "80%", padding: 12, borderRadius: 16, marginBottom: 8 },
-  myMessage: { alignSelf: "flex-end", backgroundColor: "#00C853" },
-  theirMessage: { alignSelf: "flex-start", backgroundColor: "#f0f0f0" },
-  messageText: { fontSize: 16, marginBottom: 4, color: "#333" },
-  myMessageText: { color: "#fff" },
-  messageTime: { fontSize: 12, color: "#666" },
-  myMessageTime: { color: "#e0e0e0" },
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.primary,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  messagesList: {
+    padding: spacing.xl,
+    flexGrow: 1,
+  },
+  messageBubble: {
+    maxWidth: "80%",
+    padding: spacing.lg,
+    borderRadius: radius['2xl'],
+    marginBottom: spacing.md,
+  },
+  myMessage: {
+    alignSelf: "flex-end",
+    backgroundColor: colors.background.brandPrimary,
+  },
+  theirMessage: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.background.tertiary,
+  },
+  messageText: {
+    fontSize: typography.fontSize.base,
+    marginBottom: spacing.xs,
+    color: colors.text.primary,
+  },
+  myMessageText: {
+    color: colors.text.white,
+  },
+  messageTime: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.tertiary,
+  },
+  myMessageTime: {
+    color: colors.text.secondary,
+  },
   inputContainer: {
     flexDirection: "row",
-    padding: 12,
+    padding: spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-    backgroundColor: "#fff",
+    borderTopColor: colors.border.secondary,
+    backgroundColor: colors.background.secondary,
   },
   input: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    marginRight: spacing.md,
     maxHeight: 100,
+    color: colors.text.primary,
+    fontSize: typography.fontSize.base,
   },
   sendButton: {
-    backgroundColor: "#00C853",
-    borderRadius: 20,
-    paddingHorizontal: 20,
+    backgroundColor: colors.background.brandPrimary,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing['2xl'],
     justifyContent: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: "#ccc",
+    backgroundColor: colors.background.disabled,
   },
-  sendButtonText: { color: "#fff", fontWeight: "bold" },
+  sendButtonText: {
+    color: colors.text.white,
+    fontWeight: typography.fontWeight.bold,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
+    padding: spacing['5xl'],
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
     textAlign: "center",
-    marginBottom: 8,
-    color: "#333",
+    marginBottom: spacing.md,
+    color: colors.text.primary,
   },
   emptySubtext: {
-    fontSize: 14,
+    fontSize: typography.fontSize.sm,
     textAlign: "center",
-    color: "#666",
+    color: colors.text.tertiary,
   },
 });
 

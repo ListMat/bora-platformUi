@@ -3,9 +3,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import { StripeProvider } from "@stripe/stripe-react-native";
+import { StatusBar } from "expo-status-bar";
+import "@/lib/mapbox"; // Inicializar Mapbox
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({
@@ -44,8 +46,16 @@ export default function RootLayout() {
     <StripeProvider publishableKey={publishableKey}>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
+          <StatusBar style="light" />
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="screens/SolicitarAulaFlow"
+              options={{
+                title: "Solicitar Aula",
+                presentation: "fullScreenModal",
+              }}
+            />
           </Stack>
         </QueryClientProvider>
       </trpc.Provider>

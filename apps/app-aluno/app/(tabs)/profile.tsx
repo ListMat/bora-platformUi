@@ -1,20 +1,24 @@
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { colors, spacing, radius, typography } from "@/theme";
+import { trpc } from "@/lib/trpc";
 
 export default function ProfileScreen() {
+  const { data: user } = trpc.user.me.useQuery();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Meu Perfil</Text>
       <View style={styles.card}>
         <Text style={styles.label}>Nome</Text>
-        <Text style={styles.value}>Usuário BORA</Text>
+        <Text style={styles.value}>{user?.name || "Usuário BORA"}</Text>
       </View>
       <View style={styles.card}>
         <Text style={styles.label}>E-mail</Text>
-        <Text style={styles.value}>usuario@bora.com</Text>
+        <Text style={styles.value}>{user?.email || "usuario@bora.com"}</Text>
       </View>
       <View style={styles.card}>
         <Text style={styles.label}>Telefone</Text>
-        <Text style={styles.value}>Não informado</Text>
+        <Text style={styles.value}>{user?.phone || "Não informado"}</Text>
       </View>
       <TouchableOpacity style={styles.button}>
         <Text style={styles.buttonText}>Editar Perfil</Text>
@@ -29,50 +33,54 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
+    backgroundColor: colors.background.primary,
+    padding: spacing["2xl"],
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 24,
+    fontSize: typography.fontSize["2xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.primary,
+    marginBottom: spacing["3xl"],
   },
   card: {
-    backgroundColor: "#f9f9f9",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+    backgroundColor: colors.background.secondary,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border.secondary,
   },
   label: {
-    fontSize: 12,
-    color: "#999",
-    marginBottom: 4,
+    fontSize: typography.fontSize.xs,
+    color: colors.text.tertiary,
+    marginBottom: spacing.xs,
+    fontWeight: typography.fontWeight.medium,
   },
   value: {
-    fontSize: 16,
-    color: "#333",
+    fontSize: typography.fontSize.base,
+    color: colors.text.primary,
+    fontWeight: typography.fontWeight.medium,
   },
   button: {
-    backgroundColor: "#00C853",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: colors.background.brandPrimary,
+    padding: spacing.xl,
+    borderRadius: radius.lg,
     alignItems: "center",
-    marginTop: 16,
+    marginTop: spacing.xl,
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    color: colors.text.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
   logoutButton: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.background.secondary,
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: colors.border.primary,
   },
   logoutText: {
-    color: "#333",
-    fontSize: 16,
-    fontWeight: "600",
+    color: colors.text.primary,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
   },
 });
-

@@ -44,6 +44,12 @@
           "merchantIdentifier": "merchant.com.bora.aluno",
           "enableGooglePay": true
         }
+      ],
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "YOUR_MAPBOX_TOKEN_HERE"
+        }
       ]
     ]
   }

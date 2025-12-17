@@ -1,6 +1,8 @@
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
+import { colors, spacing, radius, typography } from "@/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 const PACKAGES = [
   { id: "5h", hours: 5, price: 450, discount: 10, originalPrice: 500 },
@@ -20,10 +22,9 @@ export default function WalletScreen() {
   );
 
   const walletBalance = user?.student?.walletBalance || 0;
-  const hoursBalance = Number(walletBalance) / 100; // Assumindo R$ 100 por hora
+  const hoursBalance = Number(walletBalance) / 100;
 
   const handleBuyPackage = (packageData: typeof PACKAGES[0]) => {
-    // Navegar para seleção de método de pagamento
     router.push({
       pathname: "/screens/paymentMethod",
       params: { 
@@ -61,9 +62,16 @@ export default function WalletScreen() {
   const renderTransaction = ({ item }: any) => (
     <View style={styles.transactionCard}>
       <View style={styles.transactionHeader}>
-        <Text style={styles.transactionType}>
-          {item.lesson ? "Aula" : "Pacote"}
-        </Text>
+        <View style={styles.transactionTypeContainer}>
+          <Ionicons 
+            name={item.lesson ? "school" : "cube"} 
+            size={16} 
+            color={colors.text.secondary} 
+          />
+          <Text style={styles.transactionType}>
+            {item.lesson ? "Aula" : "Pacote"}
+          </Text>
+        </View>
         <Text style={[
           styles.transactionAmount,
           item.status === "COMPLETED" ? styles.amountPositive : styles.amountPending
@@ -73,19 +81,24 @@ export default function WalletScreen() {
       </View>
       {item.lesson && (
         <Text style={styles.transactionInstructor}>
-          Instrutor: {item.lesson.instructor.user.name}
+          Instrutor: {item.lesson.instructor?.user?.name || "N/A"}
         </Text>
       )}
       <View style={styles.transactionFooter}>
         <Text style={styles.transactionDate}>
-          {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+          {new Date(item.createdAt).toLocaleDateString("pt-BR")}
         </Text>
-        <Text style={[
-          styles.transactionStatus,
-          item.status === "COMPLETED" && styles.statusCompleted
+        <View style={[
+          styles.statusBadge,
+          item.status === "COMPLETED" && styles.statusBadgeCompleted
         ]}>
-          {item.status === "COMPLETED" ? "Concluído" : "Pendente"}
-        </Text>
+          <Text style={[
+            styles.transactionStatus,
+            item.status === "COMPLETED" && styles.statusCompleted
+          ]}>
+            {item.status === "COMPLETED" ? "Concluído" : "Pendente"}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -93,7 +106,8 @@ export default function WalletScreen() {
   if (isLoadingUser) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#00C853" />
+        <ActivityIndicator size="large" color={colors.background.brandPrimary} />
+        <Text style={styles.loadingText}>Carregando...</Text>
       </View>
     );
   }
@@ -102,7 +116,6 @@ export default function WalletScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Wallet Balance */}
       <View style={styles.balanceCard}>
         <Text style={styles.balanceLabel}>Saldo Disponível</Text>
         <Text style={styles.balanceAmount}>R$ {Number(walletBalance).toFixed(2)}</Text>
@@ -111,7 +124,6 @@ export default function WalletScreen() {
         </Text>
       </View>
 
-      {/* Packages */}
       <Text style={styles.sectionTitle}>Pacotes com Desconto</Text>
       <FlatList
         data={PACKAGES}
@@ -122,14 +134,14 @@ export default function WalletScreen() {
         contentContainerStyle={styles.packagesList}
       />
 
-      {/* Transaction History */}
       <Text style={styles.sectionTitle}>Histórico</Text>
       {isLoadingPayments ? (
         <View style={styles.placeholderSmall}>
-          <ActivityIndicator size="small" color="#00C853" />
+          <ActivityIndicator size="small" color={colors.background.brandPrimary} />
         </View>
       ) : allPayments.length === 0 ? (
         <View style={styles.placeholderSmall}>
+          <Ionicons name="receipt-outline" size={48} color={colors.text.tertiary} />
           <Text style={styles.placeholderText}>Nenhuma transação ainda</Text>
         </View>
       ) : (
@@ -147,142 +159,157 @@ export default function WalletScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
+    backgroundColor: colors.background.primary,
+    padding: spacing["2xl"],
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
+  loadingText: {
+    marginTop: spacing.lg,
+    fontSize: typography.fontSize.base,
+    color: colors.text.secondary,
+  },
   balanceCard: {
-    backgroundColor: "#00C853",
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
+    backgroundColor: colors.background.brandPrimary,
+    borderRadius: radius["2xl"],
+    padding: spacing["3xl"],
+    marginBottom: spacing["3xl"],
     alignItems: "center",
   },
   balanceLabel: {
-    fontSize: 14,
-    color: "#fff",
+    fontSize: typography.fontSize.sm,
+    color: colors.text.white,
     opacity: 0.9,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
+    fontWeight: typography.fontWeight.medium,
   },
   balanceAmount: {
-    fontSize: 36,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 4,
+    fontSize: typography.fontSize["5xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.white,
+    marginBottom: spacing.xs,
   },
   hoursBalance: {
-    fontSize: 14,
-    color: "#fff",
+    fontSize: typography.fontSize.sm,
+    color: colors.text.white,
     opacity: 0.9,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
-    marginTop: 8,
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.primary,
+    marginBottom: spacing.xl,
+    marginTop: spacing.sm,
   },
   packagesList: {
-    paddingBottom: 16,
+    paddingBottom: spacing.xl,
   },
   packageCard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius["2xl"],
+    padding: spacing.xl,
+    marginRight: spacing.lg,
     width: 180,
     borderWidth: 2,
-    borderColor: "#00C853",
+    borderColor: colors.background.brandPrimary,
   },
   packageHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: spacing.lg,
   },
   packageHours: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#00C853",
+    fontSize: typography.fontSize["3xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.background.brandPrimary,
   },
   discountBadge: {
     backgroundColor: "#FF6D00",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.lg,
   },
   discountText: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "600",
+    color: colors.text.white,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
   },
   priceContainer: {
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   originalPrice: {
-    fontSize: 13,
-    color: "#999",
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
     textDecorationLine: "line-through",
   },
   packagePrice: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#00C853",
+    fontSize: typography.fontSize["2xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.background.brandPrimary,
   },
   perHour: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 12,
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
+    marginBottom: spacing.lg,
   },
   buyButton: {
-    backgroundColor: "#00C853",
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: colors.background.brandPrimary,
+    padding: spacing.md,
+    borderRadius: radius.lg,
     alignItems: "center",
   },
   buyButtonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
+    color: colors.text.white,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
   },
   transactionsList: {
-    paddingBottom: 20,
+    paddingBottom: spacing["2xl"],
   },
   transactionCard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: colors.background.secondary,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
     borderLeftWidth: 3,
-    borderLeftColor: "#00C853",
+    borderLeftColor: colors.background.brandPrimary,
+    borderWidth: 1,
+    borderColor: colors.border.secondary,
   },
   transactionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
+  },
+  transactionTypeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
   },
   transactionType: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
   },
   transactionAmount: {
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
   },
   amountPositive: {
-    color: "#00C853",
+    color: colors.background.brandPrimary,
   },
   amountPending: {
-    color: "#FFA500",
+    color: colors.text.warning,
   },
   transactionInstructor: {
-    fontSize: 13,
-    color: "#666",
-    marginBottom: 4,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginBottom: spacing.xs,
   },
   transactionFooter: {
     flexDirection: "row",
@@ -290,25 +317,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   transactionDate: {
-    fontSize: 12,
-    color: "#999",
+    fontSize: typography.fontSize.xs,
+    color: colors.text.tertiary,
+  },
+  statusBadge: {
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.full,
+  },
+  statusBadgeCompleted: {
+    backgroundColor: colors.background.brandPrimary,
   },
   transactionStatus: {
-    fontSize: 12,
-    color: "#FFA500",
-    fontWeight: "600",
+    fontSize: typography.fontSize.xs,
+    color: colors.text.warning,
+    fontWeight: typography.fontWeight.semibold,
   },
   statusCompleted: {
-    color: "#00C853",
+    color: colors.text.white,
   },
   placeholderSmall: {
-    padding: 20,
+    padding: spacing["2xl"],
     alignItems: "center",
   },
   placeholderText: {
-    fontSize: 16,
-    color: "#999",
+    fontSize: typography.fontSize.base,
+    color: colors.text.tertiary,
+    marginTop: spacing.lg,
+    textAlign: "center",
   },
 });
-
-
