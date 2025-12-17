@@ -434,5 +434,124 @@ export const paymentRouter = router({
         })),
       };
     }),
+
+  // Gerar QR Code Pix para instrutor receber pagamento
+  generatePix: protectedProcedure
+    .input(
+      z.object({
+        lessonId: z.string(),
+        amount: z.number().positive(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      if (!user?.instructor) {
+        throw new Error("Only instructors can generate Pix QR codes");
+      }
+
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+        include: {
+          instructor: true,
+          student: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      if (!lesson || lesson.instructorId !== user.instructor.id) {
+        throw new Error("Lesson not found or unauthorized");
+      }
+
+      // Integrar com gateway de pagamento real
+      // Opção 1: Mercado Pago
+      // Opção 2: PagSeguro
+      // Opção 3: Stripe PIX (Brasil)
+      // Por enquanto, usando mock. Em produção, integrar com um dos gateways acima.
+
+      let pixCode: string;
+      let qrCodeUrl: string;
+
+      if (process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+        // Integração com Mercado Pago
+        // TODO: Implementar chamada à API do Mercado Pago
+        // const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
+        //   method: 'POST',
+        //   headers: {
+        //     'Authorization': `Bearer ${process.env.MERCADO_PAGO_ACCESS_TOKEN}`,
+        //     'Content-Type': 'application/json',
+        //   },
+        //   body: JSON.stringify({
+        //     transaction_amount: input.amount,
+        //     description: `Aula com ${lesson.student.user.name}`,
+        //     payment_method_id: 'pix',
+        //     payer: { email: lesson.student.user.email },
+        //   }),
+        // });
+        // const mpData = await mpResponse.json();
+        // pixCode = mpData.point_of_interaction.transaction_data.qr_code;
+        // qrCodeUrl = mpData.point_of_interaction.transaction_data.qr_code_base64;
+        
+        // Mock por enquanto
+        pixCode = `00020126580014BR.GOV.BCB.PIX0136${Math.random().toString(36).substring(7)}5204000053039865802BR5925BORA AUTOESCOLA LTDA6009SAO PAULO62070503***6304${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        qrCodeUrl = "";
+      } else if (process.env.PAGSEGURO_TOKEN) {
+        // Integração com PagSeguro
+        // TODO: Implementar chamada à API do PagSeguro
+        pixCode = `00020126580014BR.GOV.BCB.PIX0136${Math.random().toString(36).substring(7)}5204000053039865802BR5925BORA AUTOESCOLA LTDA6009SAO PAULO62070503***6304${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        qrCodeUrl = "";
+      } else {
+        // Mock para desenvolvimento
+        pixCode = `00020126580014BR.GOV.BCB.PIX0136${Math.random().toString(36).substring(7)}5204000053039865802BR5925BORA AUTOESCOLA LTDA6009SAO PAULO62070503***6304${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        qrCodeUrl = "";
+      }
+
+      // Verificar se já existe pagamento para esta aula
+      const existingPayment = await ctx.prisma.payment.findFirst({
+        where: {
+          lessonId: input.lessonId,
+        },
+      });
+
+      // Criar ou atualizar pagamento
+      const payment = existingPayment
+        ? await ctx.prisma.payment.update({
+            where: { id: existingPayment.id },
+            data: {
+              amount: input.amount,
+              method: PaymentMethod.PIX,
+              status: PaymentStatus.PENDING,
+            },
+          })
+        : await ctx.prisma.payment.create({
+            data: {
+              lessonId: input.lessonId,
+              amount: input.amount,
+              method: PaymentMethod.PIX,
+              status: PaymentStatus.PENDING,
+            },
+          });
+
+      // Salvar código Pix no pagamento
+      await ctx.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          pixCopyPaste: pixCode,
+          pixQrCode: qrCodeUrl || pixCode, // URL da imagem do QR Code ou código para gerar
+        },
+      });
+
+      return {
+        qrCode: qrCodeUrl || pixCode, // URL da imagem do QR Code ou código para gerar
+        pixCode,
+        paymentId: payment.id,
+      };
+    }),
 });
 

@@ -9,6 +9,8 @@ import { bundleRouter } from "./routers/bundle";
 import { chatRouter } from "./routers/chat";
 import { skillRouter } from "./routers/skill";
 import { vehicleRouter } from "./routers/vehicle";
+import { planRouter } from "./routers/plan";
+import { notificationRouter } from "./routers/notification";
 
 export const appRouter = router({
   user: userRouter,
@@ -21,6 +23,8 @@ export const appRouter = router({
   chat: chatRouter,
   skill: skillRouter,
   vehicle: vehicleRouter,
+  plan: planRouter,
+  notification: notificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

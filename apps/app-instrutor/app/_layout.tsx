@@ -5,6 +5,7 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { useState } from "react";
 import * as SecureStore from "expo-secure-store";
+import { StatusBar } from "expo-status-bar";
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({
@@ -36,8 +37,37 @@ export default function RootLayout() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
+        <StatusBar style="light" />
         <Stack>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="screens/withdrawPix"
+            options={{
+              title: "Solicitar Saque Pix",
+              presentation: "modal",
+            }}
+          />
+          <Stack.Screen
+            name="screens/generatePix"
+            options={{
+              title: "Gerar Pix",
+              presentation: "modal",
+            }}
+          />
+          <Stack.Screen
+            name="screens/vehicles"
+            options={{
+              title: "Meus Veículos",
+              presentation: "card",
+            }}
+          />
+          <Stack.Screen
+            name="screens/addVehicle"
+            options={{
+              title: "Cadastrar Veículo",
+              presentation: "card",
+            }}
+          />
         </Stack>
       </QueryClientProvider>
     </trpc.Provider>

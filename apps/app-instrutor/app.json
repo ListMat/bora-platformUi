@@ -28,6 +28,18 @@
       "favicon": "./assets/favicon.png"
     },
     "scheme": "bora-instrutor",
-    "plugins": ["expo-router", "expo-secure-store", "expo-location"]
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-location",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FF6D00",
+          "sounds": ["./assets/notification.wav"]
+        }
+      ]
+    ]
   }
 }

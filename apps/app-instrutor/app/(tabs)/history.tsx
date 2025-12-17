@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet } from "react-native";
+import { colors, spacing, radius, typography } from "@/theme";
 
 export default function HistoryScreen() {
   return (
@@ -24,35 +25,36 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    padding: 20,
+    backgroundColor: colors.background.primary,
+    padding: spacing['2xl'],
   },
   title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 16,
+    fontSize: typography.fontSize['2xl'],
+    fontWeight: typography.fontWeight.bold,
+    marginBottom: spacing.xl,
+    color: colors.text.primary,
   },
   statsRow: {
     flexDirection: "row",
-    gap: 12,
-    marginBottom: 24,
+    gap: spacing.lg,
+    marginBottom: spacing['3xl'],
   },
   statCard: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: colors.background.tertiary,
+    padding: spacing.xl,
+    borderRadius: radius.md,
     alignItems: "center",
   },
   statValue: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#FF6D00",
+    fontSize: typography.fontSize['4xl'],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.background.brandPrimary,
   },
   statLabel: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 4,
+    fontSize: typography.fontSize.xs,
+    color: colors.text.tertiary,
+    marginTop: spacing.xs,
   },
   placeholder: {
     flex: 1,
@@ -60,8 +62,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   placeholderText: {
-    fontSize: 16,
-    color: "#999",
+    fontSize: typography.fontSize.base,
+    color: colors.text.tertiary,
   },
 });
 

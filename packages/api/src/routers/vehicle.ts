@@ -74,9 +74,23 @@ export const vehicleRouter = router({
         throw new Error("User not found");
       }
 
-      // Se for instrutor, duplo-pedal é obrigatório
-      if (user.role === "INSTRUCTOR" && !input.hasDualPedal) {
-        throw new Error("Duplo-pedal é obrigatório para instrutores");
+      // Se for instrutor, validar limite de 3 veículos
+      if (user.role === "INSTRUCTOR") {
+        const vehicleCount = await ctx.prisma.vehicle.count({
+          where: {
+            userId: user.id,
+            status: "active",
+          },
+        });
+
+        if (vehicleCount >= 3) {
+          throw new Error("Você pode cadastrar no máximo 3 veículos");
+        }
+
+        // Duplo-pedal é obrigatório para carros (não para motos)
+        if (input.category !== VehicleCategory.MOTO && !input.hasDualPedal) {
+          throw new Error("Duplo-pedal é obrigatório para carros de instrutores");
+        }
       }
 
       // Criar veículo temporário para obter ID

@@ -65,6 +65,7 @@ enum VehicleCategory {
   SPORTIVO
   COMPACTO
   ELETRICO
+  MOTO
 }
 
 enum TransmissionType {

@@ -361,5 +361,282 @@ export const lessonRouter = router({
 
       return lesson;
     }),
+
+  // Solicitar aula (novo fluxo guiado)
+  request: studentProcedure
+    .input(
+      z.object({
+        instructorId: z.string(),
+        scheduledAt: z.date(),
+        lessonType: z.string(), // "1ª Habilitação", "Direção via pública", etc.
+        vehicleId: z.string().optional(), // ID do veículo da autoescola ou do aluno
+        useOwnVehicle: z.boolean().default(false),
+        planId: z.string().optional(), // ID do plano/pacote
+        paymentMethod: z.enum(["PIX", "DINHEIRO", "DEBITO", "CREDITO"]),
+        pickupLatitude: z.number().optional(),
+        pickupLongitude: z.number().optional(),
+        pickupAddress: z.string().optional(),
+        price: z.number().positive(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { student: true },
+      });
+
+      if (!user?.student) {
+        throw new Error("Student profile not found");
+      }
+
+      // Verificar se o instrutor existe e está disponível
+      const instructor = await ctx.prisma.instructor.findUnique({
+        where: { id: input.instructorId },
+        include: { user: true },
+      });
+
+      if (!instructor || !instructor.isAvailable) {
+        throw new Error("Instructor not available");
+      }
+
+      // Criar aula com status PENDING (aguardando aprovação do instrutor)
+      const lesson = await ctx.prisma.lesson.create({
+        data: {
+          studentId: user.student.id,
+          instructorId: input.instructorId,
+          scheduledAt: input.scheduledAt,
+          pickupLatitude: input.pickupLatitude,
+          pickupLongitude: input.pickupLongitude,
+          pickupAddress: input.pickupAddress,
+          price: input.price,
+          status: LessonStatus.SCHEDULED,
+          // Metadata adicional pode ser armazenado em um campo JSON
+        },
+        include: {
+          instructor: {
+            include: {
+              user: true,
+            },
+          },
+          student: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      // Criar mensagem inicial no chat
+      const lessonTypeLabel = input.lessonType;
+      const paymentMethodLabel = {
+        PIX: "Pix",
+        DINHEIRO: "Dinheiro",
+        DEBITO: "Cartão de débito",
+        CREDITO: "Cartão de crédito",
+      }[input.paymentMethod];
+
+      const initialMessage = `Solicitação de ${user.name || "Aluno"}
+${new Date(input.scheduledAt).toLocaleDateString("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+})} – ${lessonTypeLabel} – R$ ${input.price.toFixed(2)} (${paymentMethodLabel} ao final)`;
+
+      // Enviar mensagem inicial via chat router
+      try {
+        const { chatRouter } = await import("./chat");
+        // A mensagem será enviada pelo frontend após redirecionamento
+      } catch (error) {
+        console.error("Error importing chat router:", error);
+      }
+
+      return {
+        lesson,
+        initialMessage,
+      };
+    }),
+
+  // Listar próximas aulas do instrutor
+  myUpcoming: instructorProcedure.query(async ({ ctx }) => {
+    const user = await ctx.prisma.user.findUnique({
+      where: { email: ctx.session.user.email! },
+      include: { instructor: true },
+    });
+
+    if (!user?.instructor) {
+      throw new Error("Instructor profile not found");
+    }
+
+    const now = new Date();
+
+    return ctx.prisma.lesson.findMany({
+      where: {
+        instructorId: user.instructor.id,
+        scheduledAt: {
+          gte: now,
+        },
+        status: {
+          in: ["SCHEDULED", "ACTIVE"],
+        },
+      },
+      include: {
+        student: {
+          include: {
+            user: true,
+          },
+        },
+      },
+      orderBy: {
+        scheduledAt: "asc",
+      },
+      take: 5,
+    });
+  }),
+
+  // Aceitar solicitação de aula
+  acceptRequest: instructorProcedure
+    .input(
+      z.object({
+        lessonId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      if (!user?.instructor) {
+        throw new Error("Instructor profile not found");
+      }
+
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+        include: {
+          student: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      if (!lesson || lesson.instructorId !== user.instructor.id) {
+        throw new Error("Lesson not found or unauthorized");
+      }
+
+      if (lesson.status !== "SCHEDULED") {
+        throw new Error("Lesson already processed");
+      }
+
+      // Atualizar status da aula
+      const updatedLesson = await ctx.prisma.lesson.update({
+        where: { id: input.lessonId },
+        data: {
+          status: LessonStatus.SCHEDULED,
+        },
+        include: {
+          student: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      return updatedLesson;
+    }),
+
+  // Recusar solicitação de aula
+  rejectRequest: instructorProcedure
+    .input(
+      z.object({
+        lessonId: z.string(),
+        reason: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      if (!user?.instructor) {
+        throw new Error("Instructor profile not found");
+      }
+
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+      });
+
+      if (!lesson || lesson.instructorId !== user.instructor.id) {
+        throw new Error("Lesson not found or unauthorized");
+      }
+
+      // Atualizar status da aula para cancelada
+      const updatedLesson = await ctx.prisma.lesson.update({
+        where: { id: input.lessonId },
+        data: {
+          status: LessonStatus.CANCELLED,
+        },
+      });
+
+      return updatedLesson;
+    }),
+
+  // Reagendar aula
+  reschedule: instructorProcedure
+    .input(
+      z.object({
+        lessonId: z.string(),
+        newScheduledAt: z.date(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      if (!user?.instructor) {
+        throw new Error("Instructor profile not found");
+      }
+
+      const lesson = await ctx.prisma.lesson.findUnique({
+        where: { id: input.lessonId },
+      });
+
+      if (!lesson || lesson.instructorId !== user.instructor.id) {
+        throw new Error("Lesson not found or unauthorized");
+      }
+
+      // Verificar se o novo horário é pelo menos 2 horas no futuro
+      const now = new Date();
+      const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      if (input.newScheduledAt < twoHoursFromNow) {
+        throw new Error("O novo horário deve ser pelo menos 2 horas no futuro");
+      }
+
+      // Atualizar data da aula
+      const updatedLesson = await ctx.prisma.lesson.update({
+        where: { id: input.lessonId },
+        data: {
+          scheduledAt: input.newScheduledAt,
+        },
+        include: {
+          student: {
+            include: {
+              user: true,
+            },
+          },
+        },
+      });
+
+      // TODO: Enviar notificação push para o aluno sobre o reagendamento
+
+      return updatedLesson;
+    }),
 });
 

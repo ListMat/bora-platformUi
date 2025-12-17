@@ -37,16 +37,22 @@ export const chatRouter = router({
         throw new Error("Unauthorized");
       }
 
-      // Verificar janela de tempo (1h antes até 1h depois)
-      const now = new Date();
-      const scheduledTime = new Date(lesson.scheduledAt);
-      const hourBefore = new Date(scheduledTime.getTime() - 60 * 60 * 1000);
-      const hourAfter = lesson.endedAt
-        ? new Date(lesson.endedAt.getTime() + 60 * 60 * 1000)
-        : new Date(scheduledTime.getTime() + 3 * 60 * 60 * 1000);
+      // Verificar janela de tempo (permitir sempre se status é SCHEDULED para solicitações)
+      // Se a aula já foi agendada, permitir chat 1h antes até 1h depois
+      if (lesson.status === "SCHEDULED") {
+        // Permitir chat para aulas agendadas (aguardando aprovação)
+        // Não há restrição de tempo
+      } else {
+        const now = new Date();
+        const scheduledTime = new Date(lesson.scheduledAt);
+        const hourBefore = new Date(scheduledTime.getTime() - 60 * 60 * 1000);
+        const hourAfter = lesson.endedAt
+          ? new Date(lesson.endedAt.getTime() + 60 * 60 * 1000)
+          : new Date(scheduledTime.getTime() + 3 * 60 * 60 * 1000);
 
-      if (now < hourBefore || now > hourAfter) {
-        throw new Error("Chat only available 1h before to 1h after lesson");
+        if (now < hourBefore || now > hourAfter) {
+          throw new Error("Chat only available 1h before to 1h after lesson");
+        }
       }
 
       // Criar mensagem
