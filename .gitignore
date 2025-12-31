@@ -88,3 +88,7 @@ pids
 # Misc
 *.tsbuildinfo
 
+
+# Cursor
+.cursor/
+.cursorrules
