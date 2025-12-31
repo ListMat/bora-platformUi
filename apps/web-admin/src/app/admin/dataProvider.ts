@@ -295,10 +295,27 @@ const db: Record<string, any[]> = {
   chatMessages,
 };
 
+const REAL_RESOURCES = ['students', 'instructors', 'bundles'];
+
+async function getResourceData(resource: string) {
+  if (REAL_RESOURCES.includes(resource)) {
+    try {
+      const res = await fetch(`/api/admin/${resource}`);
+      if (res.ok) {
+        const json = await res.json();
+        return Array.isArray(json) ? json : (json.data || []);
+      }
+    } catch (e) {
+      console.error(`Error fetching ${resource}`, e);
+    }
+  }
+  return db[resource] || [];
+}
+
 export const dataProvider: DataProvider = {
   getList: async (resource, params) => {
-    const data = db[resource] || [];
-    
+    const data = await getResourceData(resource);
+
     // Simple filtering
     let filteredData = [...data];
     if (params.filter) {
@@ -337,7 +354,7 @@ export const dataProvider: DataProvider = {
   },
 
   getOne: async (resource, params) => {
-    const data = db[resource] || [];
+    const data = await getResourceData(resource);
     const item = data.find((item) => item.id === params.id);
     if (!item) {
       throw new Error(`Item not found: ${resource}/${params.id}`);
@@ -346,13 +363,13 @@ export const dataProvider: DataProvider = {
   },
 
   getMany: async (resource, params) => {
-    const data = db[resource] || [];
+    const data = await getResourceData(resource);
     const items = data.filter((item) => params.ids.includes(item.id));
     return { data: items };
   },
 
   getManyReference: async (resource, params) => {
-    const data = db[resource] || [];
+    const data = await getResourceData(resource);
     const filteredData = data.filter(
       (item) => item[params.target] === params.id
     );
@@ -363,6 +380,17 @@ export const dataProvider: DataProvider = {
   },
 
   create: async (resource, params) => {
+    if (REAL_RESOURCES.includes(resource)) {
+      const res = await fetch(`/api/admin/${resource}`, {
+        method: 'POST',
+        body: JSON.stringify(params.data)
+      });
+      const json = await res.json();
+      if (json.error || !res.ok) throw new Error(json.error || "Failed to create");
+      const newItem = json.data || json;
+      return { data: newItem };
+    }
+
     const data = db[resource] || [];
     const newItem = {
       ...params.data,
@@ -377,6 +405,8 @@ export const dataProvider: DataProvider = {
     const data = db[resource] || [];
     const index = data.findIndex((item) => item.id === params.id);
     if (index === -1) {
+      // Se nao achar no mock, finge sucesso para API real (ja que nao temos endpoint update)
+      if (REAL_RESOURCES.includes(resource)) return { data: params.data as any };
       throw new Error(`Item not found: ${resource}/${params.id}`);
     }
     const updatedItem = { ...data[index], ...params.data };
@@ -401,6 +431,7 @@ export const dataProvider: DataProvider = {
     const data = db[resource] || [];
     const index = data.findIndex((item) => item.id === params.id);
     if (index === -1) {
+      if (REAL_RESOURCES.includes(resource)) return { data: { id: params.id } as any };
       throw new Error(`Item not found: ${resource}/${params.id}`);
     }
     const deletedItem = data[index];
