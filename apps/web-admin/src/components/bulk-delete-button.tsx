@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Trash } from "lucide-react";
 import type { RaRecord, UseBulkDeleteControllerParams } from "ra-core";
-import { Translate, useBulkDeleteController } from "ra-core";
+import { useBulkDeleteController, useTranslate } from "ra-core";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
@@ -41,6 +41,7 @@ export const BulkDeleteButton = <
   ...props
 }: BulkDeleteButtonProps<RecordType, MutationOptionsError>) => {
   const { handleDelete, isPending } = useBulkDeleteController(props);
+  const translate = useTranslate();
 
   return (
     <Button
@@ -51,9 +52,7 @@ export const BulkDeleteButton = <
       className={cn("h-9", className)}
     >
       {icon}
-      <Translate i18nKey={label ?? "ra.action.delete"}>
-        {label ?? "Delete"}
-      </Translate>
+      {translate(label ?? "ra.action.delete", { _: label ?? "Delete" })}
     </Button>
   );
 };

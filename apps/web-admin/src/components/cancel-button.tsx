@@ -1,5 +1,5 @@
 import { CircleX } from "lucide-react";
-import { Translate } from "ra-core";
+import { useTranslate } from "ra-core";
 import { useNavigate } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import { Button } from "@/components/ui/button";
  */
 export function CancelButton(props: React.ComponentProps<"button">) {
   const navigate = useNavigate();
+  const translate = useTranslate();
   return (
     <Button
       type="button"
@@ -40,7 +41,7 @@ export function CancelButton(props: React.ComponentProps<"button">) {
       {...props}
     >
       <CircleX />
-      <Translate i18nKey="ra.action.cancel">Cancel</Translate>
+      {translate("ra.action.cancel", { _: "Cancel" })}
     </Button>
   );
 }

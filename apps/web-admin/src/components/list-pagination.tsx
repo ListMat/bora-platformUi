@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { useListPaginationContext, Translate, useTranslate } from "ra-core";
+import { useListPaginationContext, useTranslate } from "ra-core";
 
 /**
  * A pagination component with page numbers and rows per page selector.
@@ -110,9 +110,9 @@ export const ListPagination = ({
     >
       <div className="hidden md:flex items-center space-x-2">
         <p className="text-sm font-medium">
-          <Translate i18nKey="ra.navigation.page_rows_per_page">
-            Rows per page
-          </Translate>
+          {translate("ra.navigation.page_rows_per_page", {
+            _: "Rows per page",
+          })}
         </p>
         <Select
           value={perPage.toString()}
@@ -133,18 +133,14 @@ export const ListPagination = ({
         </Select>
       </div>
       <div className="text-sm text-muted-foreground">
-        <Translate
-          i18nKey="ra.navigation.page_range_info"
-          options={{
-            offsetBegin: pageStart,
-            offsetEnd: pageEnd,
-            total: total === -1 ? pageEnd : total,
-          }}
-        >
-          {total != null
+        {translate("ra.navigation.page_range_info", {
+          offsetBegin: pageStart,
+          offsetEnd: pageEnd,
+          total: total === -1 ? pageEnd : total,
+          _: total != null
             ? `${pageStart}-${pageEnd} of ${total === -1 ? pageEnd : total}`
-            : null}
-        </Translate>
+            : null
+        })}
       </div>
       <Pagination className="-w-full -mx-auto">
         <PaginationContent>
