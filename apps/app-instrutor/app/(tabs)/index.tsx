@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { useState, useEffect } from "react";
@@ -90,7 +91,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      
+
       {/* Header com toggle Online */}
       <View style={styles.header}>
         <View style={styles.headerTop}>

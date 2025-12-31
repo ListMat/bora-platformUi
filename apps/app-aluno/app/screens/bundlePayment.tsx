@@ -1,89 +1,85 @@
 import { View, Text, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
-import { useState, useEffect, useCallback } from "react";
-import { useStripe } from "@stripe/stripe-react-native";
+import { useState, useEffect } from "react";
+import * as WebBrowser from "expo-web-browser";
+
+// Completar autenticação do WebBrowser
+WebBrowser.maybeCompleteAuthSession();
 
 export default function BundlePaymentScreen() {
   const { purchaseId } = useLocalSearchParams<{ purchaseId: string }>();
   const router = useRouter();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const createIntentMutation = trpc.bundle.createIntent.useMutation();
+  const createCheckoutMutation = trpc.bundle.createCheckoutSession.useMutation();
   const confirmMutation = trpc.bundle.confirmPurchase.useMutation();
 
-  const handleInitializePayment = useCallback(async () => {
-    try {
-      if (!initPaymentSheet || !presentPaymentSheet) {
-        Alert.alert("Erro", "Stripe não está configurado. Verifique a chave pública do Stripe.");
-        return;
-      }
-
-      setLoading(true);
-      const result = await createIntentMutation.mutateAsync({ bundlePurchaseId: purchaseId });
-
-      if (!result.clientSecret) {
-        Alert.alert("Erro", "Não foi possível inicializar o pagamento");
-        return;
-      }
-
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: result.clientSecret,
-        merchantDisplayName: "BORA - Aulas de Direção",
-      });
-
-      if (initError) {
-        Alert.alert("Erro", initError.message);
-        setLoading(false);
-        return;
-      }
-
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        if (presentError.code !== "Canceled") {
-          Alert.alert("Erro", presentError.message);
-        }
-        setLoading(false);
-        return;
-      }
-
-      // Pagamento bem-sucedido
-      await confirmMutation.mutateAsync({ bundlePurchaseId: purchaseId });
-      Alert.alert("Sucesso", "Pacote comprado com sucesso!", [
-        {
-          text: "OK",
-          onPress: () => {
-            router.push("/screens/myBundles");
-          },
-        },
-      ]);
-    } catch (error: any) {
-      Alert.alert("Erro", error.message || "Erro ao processar pagamento");
-    } finally {
-      setLoading(false);
-    }
-  }, [purchaseId, initPaymentSheet, presentPaymentSheet, createIntentMutation, confirmMutation, router]);
-
   useEffect(() => {
-    if (purchaseId) {
-      handleInitializePayment();
-    }
-  }, [purchaseId, handleInitializePayment]);
+    if (!purchaseId) return;
+
+    const handlePayment = async () => {
+      try {
+        setLoading(true);
+        
+        // Criar checkout session
+        const result = await createCheckoutMutation.mutateAsync({
+          bundlePurchaseId: purchaseId,
+          successUrl: `bora-aluno://payment/success?bundlePurchaseId=${purchaseId}`,
+          cancelUrl: `bora-aluno://payment/cancel?bundlePurchaseId=${purchaseId}`,
+        });
+
+        if (!result.url) {
+          Alert.alert("Erro", "Não foi possível inicializar o pagamento");
+          setLoading(false);
+          return;
+        }
+
+        // Abrir checkout no browser
+        const browserResult = await WebBrowser.openBrowserAsync(result.url, {
+          showInRecents: true,
+        });
+
+        // Se o usuário completou o pagamento
+        if (browserResult.type === "success" || browserResult.type === "dismiss") {
+          // Verificar se o pagamento foi confirmado
+          await confirmMutation.mutateAsync({ bundlePurchaseId: purchaseId });
+          
+          Alert.alert("Sucesso", "Pacote comprado com sucesso!", [
+            {
+              text: "OK",
+              onPress: () => {
+                router.push("/screens/myBundles");
+              },
+            },
+          ]);
+        } else if (browserResult.type === "cancel") {
+          Alert.alert("Cancelado", "Pagamento cancelado");
+          router.back();
+        }
+      } catch (error: any) {
+        Alert.alert("Erro", error.message || "Erro ao processar pagamento");
+        router.back();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handlePayment();
+  }, [purchaseId, router]);
 
   return (
     <View style={styles.container}>
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#00C853" />
-          <Text style={styles.loadingText}>Processando pagamento...</Text>
+          <Text style={styles.loadingText}>Abrindo checkout...</Text>
         </View>
       ) : (
         <View style={styles.content}>
           <Text style={styles.title}>Pagamento do Pacote</Text>
           <Text style={styles.subtitle}>
-            O formulário de pagamento será exibido em breve
+            Redirecionando para o checkout seguro...
           </Text>
         </View>
       )}
@@ -124,4 +120,3 @@ const styles = StyleSheet.create({
     color: "#666",
   },
 });
-

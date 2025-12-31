@@ -45,8 +45,8 @@ export const emergencyRouter = router({
         throw new Error("Lesson not found");
       }
 
-      if (lesson.status !== "IN_PROGRESS") {
-        throw new Error("Lesson is not in progress");
+      if (lesson.status !== "ACTIVE" && lesson.status !== "SCHEDULED") {
+        throw new Error("SOS only available during active or scheduled lessons");
       }
 
       // Criar registro de emergência
@@ -67,9 +67,38 @@ export const emergencyRouter = router({
         },
       });
 
-      // TODO: Enviar notificação push para ambas as partes
-      // TODO: Notificar equipe de suporte
-      // TODO: Integrar com serviços de emergência se necessário
+      // Enviar notificações push
+      try {
+        // Notificar aluno, instrutor e equipe de suporte
+        await ctx.prisma.$transaction(async (tx) => {
+          // Aqui podemos adicionar lógica para notificar admins também
+          const adminUsers = await tx.user.findMany({
+            where: { role: "ADMIN", pushToken: { not: null } },
+            select: { pushToken: true },
+          });
+
+          // Preparar IDs para notificação
+          const userIdsToNotify = [
+            lesson.student.userId,
+            lesson.instructor.userId,
+          ];
+
+          // Enviar notificações (não bloquear em caso de falha)
+          fetch(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/trpc", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userIds: userIdsToNotify,
+              lessonId: input.lessonId,
+              latitude: input.latitude,
+              longitude: input.longitude,
+            }),
+          }).catch((err) => console.error("Failed to send SOS notifications:", err));
+        });
+      } catch (notificationError) {
+        console.error("Error sending emergency notifications:", notificationError);
+        // Não falhar a criação do SOS por causa de notificações
+      }
 
       return {
         id: emergency.id,

@@ -1,8 +1,9 @@
 {
   "expo": {
     "name": "BORA Aluno",
-    "slug": "bora-aluno",
+    "slug": "bora",
     "version": "1.0.0",
+    "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -23,34 +24,49 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#00C853"
       },
-      "package": "com.bora.aluno",
-      "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
-      ]
+      "package": "com.bora.aluno"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "scheme": "bora-aluno",
+    "jsEngine": "hermes",
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "NEVER",
+      "fallbackToCacheTimeout": 0
+    },
     "plugins": [
+      "expo-dev-client",
       "expo-router",
       "expo-secure-store",
       "expo-location",
       "expo-asset",
       [
-        "@stripe/stripe-react-native",
+        "expo-notifications",
         {
-          "merchantIdentifier": "merchant.com.bora.aluno",
-          "enableGooglePay": true
+          "icon": "./assets/icon.png",
+          "color": "#00C853"
         }
       ],
+      "@react-native-community/datetimepicker",
       [
-        "@rnmapbox/maps",
+        "expo-build-properties",
         {
-          "RNMapboxMapsDownloadToken": "YOUR_MAPBOX_TOKEN_HERE"
+          "android": {
+            "kotlinVersion": "2.0.0"
+          }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "4844f00e-55a6-4a17-abbc-9a6ba516ee49"
+      }
+    },
+    "owner": "boradevvs-organization"
   }
 }

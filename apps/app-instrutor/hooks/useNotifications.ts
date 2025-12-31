@@ -25,6 +25,12 @@ if (Notifications) {
 }
 
 export function useNotifications() {
+  if (Platform.OS === 'web') {
+    return {
+      scheduleNotification: async () => { }
+    }
+  }
+
   const notificationListener = useRef<any>();
   const responseListener = useRef<any>();
   const registerTokenMutation = trpc.notification.registerToken.useMutation();

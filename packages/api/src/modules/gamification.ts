@@ -10,6 +10,7 @@ export const POINTS_CONFIG = {
   PERFECT_RATING_RECEIVED: 20, // Bônus por receber nota 5
   REFERRAL_SIGNUP: 100, // Pontos por indicação (quando indicado se cadastra)
   REFERRAL_FIRST_LESSON: 50, // Pontos adicionais quando indicado faz primeira aula
+  PROFILE_COMPLETE: 25, // Pontos por completar perfil
 };
 
 // Configuração de níveis

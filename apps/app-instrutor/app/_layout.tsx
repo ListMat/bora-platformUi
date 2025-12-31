@@ -68,6 +68,14 @@ export default function RootLayout() {
               presentation: "card",
             }}
           />
+          <Stack.Screen
+            name="screens/onboarding/OnboardingFlow"
+            options={{
+              title: "Cadastro de Instrutor",
+              presentation: "fullScreenModal",
+              headerShown: false,
+            }}
+          />
         </Stack>
       </QueryClientProvider>
     </trpc.Provider>

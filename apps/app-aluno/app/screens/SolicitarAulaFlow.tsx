@@ -8,17 +8,15 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { trpc } from "@/lib/trpc";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, radius, typography } from "@/theme";
-import StepDateTime from "./steps/StepDateTime";
-import StepLessonType from "./steps/StepLessonType";
-import StepVehicle from "./steps/StepVehicle";
-import StepPlan from "./steps/StepPlan";
-import StepPayment from "./steps/StepPayment";
-import StepConfirm from "./steps/StepConfirm";
+import { useHaptic } from "@/hooks/useHaptic";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import StepWhen from "./steps/StepWhen";
+import StepPlanPayment from "./steps/StepPlanPayment";
 
 interface SolicitarAulaFlowProps {
   visible?: boolean;
@@ -28,6 +26,7 @@ interface SolicitarAulaFlowProps {
 
 export default function SolicitarAulaFlow(props?: SolicitarAulaFlowProps) {
   const router = useRouter();
+  const haptic = useHaptic();
   const params = useLocalSearchParams<{ instructorId?: string }>();
   const instructorId = props?.instructorId || params.instructorId;
   const isModal = props?.visible !== undefined;
@@ -72,12 +71,8 @@ export default function SolicitarAulaFlow(props?: SolicitarAulaFlowProps) {
   });
 
   const steps = [
-    { component: StepDateTime, title: "Data & Horário" },
-    { component: StepLessonType, title: "Tipo de Aula" },
-    { component: StepVehicle, title: "Veículo" },
-    { component: StepPlan, title: "Plano" },
-    { component: StepPayment, title: "Pagamento" },
-    { component: StepConfirm, title: "Confirmar" },
+    { component: StepWhen, title: "Quando?" },
+    { component: StepPlanPayment, title: "Plano & Pagamento" },
   ];
 
   const handleNext = () => {
@@ -94,7 +89,7 @@ export default function SolicitarAulaFlow(props?: SolicitarAulaFlowProps) {
     }
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!formData.date || !formData.time || !instructorId) {
       Alert.alert("Erro", "Preencha todos os campos obrigatórios");
       return;
@@ -109,6 +104,19 @@ export default function SolicitarAulaFlow(props?: SolicitarAulaFlowProps) {
     if (scheduledAt < twoHoursFromNow) {
       Alert.alert("Erro", "A aula deve ser agendada com pelo menos 2 horas de antecedência");
       return;
+    }
+
+    // Salvar última configuração para "Aula em 1 clique"
+    try {
+      await AsyncStorage.setItem('last_lesson_config', JSON.stringify({
+        time: formData.time,
+        lessonType: formData.lessonType,
+        planId: formData.planId,
+        paymentMethod: formData.paymentMethod,
+        price: formData.price,
+      }));
+    } catch (error) {
+      console.error("Error saving last config:", error);
     }
 
     requestMutation.mutate({
@@ -133,11 +141,11 @@ export default function SolicitarAulaFlow(props?: SolicitarAulaFlowProps) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+        <TouchableOpacity onPress={() => { haptic.light(); handleBack(); }} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.background.brandPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Solicitar Aula</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+        <TouchableOpacity onPress={() => { haptic.light(); onClose(); }} style={styles.closeButton}>
           <Ionicons name="close" size={24} color={colors.text.secondary} />
         </TouchableOpacity>
       </View>

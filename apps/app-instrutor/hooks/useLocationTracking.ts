@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import * as Location from "expo-location";
 import { trpc } from "@/lib/trpc";
 
@@ -8,6 +9,10 @@ interface UseLocationTrackingOptions {
 }
 
 export function useLocationTracking({ enabled, interval = 30000 }: UseLocationTrackingOptions) {
+  if (Platform.OS === 'web') {
+    return { isUpdating: false };
+  }
+
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const updateLocationMutation = trpc.instructor.updateLocation.useMutation();
 

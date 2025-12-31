@@ -3,12 +3,35 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { trpc } from "@/lib/trpc";
 import { colors, spacing, radius, typography } from "@/theme";
+import { StatusBadge } from "@/components/StatusBadge";
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { data: instructor } = trpc.instructor.getMyProfile.useQuery();
+  const { data: instructor, isLoading } = trpc.instructor.getMyProfile.useQuery();
   const { data: vehicles } = trpc.vehicle.myVehicles.useQuery();
   const vehicleCount = vehicles?.length || 0;
+
+  // Se não tem perfil, mostrar botão para criar
+  if (!isLoading && !instructor) {
+    return (
+      <ScrollView style={styles.container}>
+        <Text style={styles.title}>Meu Perfil</Text>
+        <View style={styles.emptyState}>
+          <Ionicons name="person-add-outline" size={64} color={colors.text.tertiary} />
+          <Text style={styles.emptyTitle}>Complete seu cadastro</Text>
+          <Text style={styles.emptyText}>
+            Para começar a dar aulas, você precisa completar seu cadastro como instrutor.
+          </Text>
+          <TouchableOpacity
+            style={styles.createButton}
+            onPress={() => router.push("/screens/onboarding/OnboardingFlow")}
+          >
+            <Text style={styles.createButtonText}>Começar Cadastro</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -28,9 +51,9 @@ export default function ProfileScreen() {
               </Text>
             </View>
           )}
-          {instructor?.status === "ACTIVE" && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={24} color={colors.background.brandPrimary} />
+          {instructor?.status && (
+            <View style={styles.statusBadgeContainer}>
+              <StatusBadge status={instructor.status} size="sm" />
             </View>
           )}
         </View>
@@ -65,13 +88,36 @@ export default function ProfileScreen() {
         <Text style={styles.buttonText}>Meus Veículos ({vehicleCount}/3)</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Editar Perfil</Text>
-      </TouchableOpacity>
+      {instructor?.status === "PENDING_VERIFICATION" && (
+        <View style={styles.pendingCard}>
+          <Ionicons name="time-outline" size={24} color={colors.text.warning} />
+          <Text style={styles.pendingText}>
+            Seu cadastro está aguardando verificação. Você receberá uma notificação quando for aprovado.
+          </Text>
+        </View>
+      )}
 
-      <TouchableOpacity style={[styles.button, styles.documentsButton]}>
-        <Text style={styles.buttonText}>Enviar Documentos</Text>
-      </TouchableOpacity>
+      {instructor?.status === "ACTIVE" && (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => router.push("/screens/onboarding/OnboardingFlow")}
+        >
+          <Ionicons name="create-outline" size={20} color={colors.text.white} />
+          <Text style={styles.buttonText}>Editar Perfil</Text>
+        </TouchableOpacity>
+      )}
+
+      {(instructor?.status === "PENDING_VERIFICATION" || !instructor?.cnhDocument || !instructor?.credentialDoc) && (
+        <TouchableOpacity
+          style={[styles.button, styles.documentsButton]}
+          onPress={() => router.push("/screens/onboarding/OnboardingFlow")}
+        >
+          <Ionicons name="document-text-outline" size={20} color={colors.text.white} />
+          <Text style={styles.buttonText}>
+            {instructor?.cnhDocument && instructor?.credentialDoc ? "Atualizar Documentos" : "Enviar Documentos"}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity style={[styles.button, styles.logoutButton]}>
         <Text style={styles.logoutText}>Sair</Text>
@@ -185,6 +231,61 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     fontSize: typography.fontSize.base,
     fontWeight: typography.fontWeight.semibold,
+  },
+  statusBadgeContainer: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.background.primary,
+    borderRadius: radius.full,
+    padding: 4,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing["4xl"],
+    paddingHorizontal: spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.primary,
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  emptyText: {
+    fontSize: typography.fontSize.base,
+    color: colors.text.secondary,
+    textAlign: "center",
+    marginBottom: spacing["2xl"],
+  },
+  createButton: {
+    backgroundColor: colors.background.brandPrimary,
+    padding: spacing.xl,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing["2xl"],
+  },
+  createButtonText: {
+    color: colors.text.white,
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.semibold,
+  },
+  pendingCard: {
+    backgroundColor: colors.background.warning + "20",
+    padding: spacing.xl,
+    borderRadius: radius.md,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border.warning,
+  },
+  pendingText: {
+    flex: 1,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    lineHeight: 20,
   },
 });
 

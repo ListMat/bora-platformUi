@@ -101,14 +101,34 @@ pnpm add expo-device@~6.0.2 expo-notifications@~0.28.19 react-native-qrcode-svg@
 
 Devido ao problema com variáveis de ambiente, use uma das opções abaixo:
 
-### Opção 1: Usar o script start.ps1 (Recomendado)
+### ⭐ Opção 1: Usar o script start.ps1 (Recomendado)
+
+O script `start.ps1` limpa automaticamente as variáveis problemáticas antes de iniciar:
 
 ```powershell
 cd "C:\Users\Mateus\Desktop\Bora UI\apps\app-instrutor"
 .\start.ps1
 ```
 
-### Opção 2: Limpar variáveis e executar diretamente
+### 🔧 Opção 2: Limpeza Permanente (Recomendado para resolver definitivamente)
+
+Execute o script de limpeza permanente (como Administrador para limpar do sistema):
+
+```powershell
+cd "C:\Users\Mateus\Desktop\Bora UI\apps\app-instrutor"
+
+# Executar como Administrador (clique com botão direito > Executar como Administrador)
+.\fix-env-vars.ps1
+```
+
+Depois, feche e reabra o PowerShell e use:
+
+```powershell
+cd "C:\Users\Mateus\Desktop\Bora UI\apps\app-instrutor"
+.\start.ps1
+```
+
+### Opção 3: Executar Expo diretamente (sem pnpm)
 
 ```powershell
 cd "C:\Users\Mateus\Desktop\Bora UI\apps\app-instrutor"
@@ -118,30 +138,14 @@ Get-ChildItem Env: | Where-Object { $_.Name -like "npm_config_*" } | ForEach-Obj
     Remove-Item "Env:\$($_.Name)" -ErrorAction SilentlyContinue
 }
 
-# Executar Expo diretamente (sem pnpm)
-npx expo start
+# Executar Expo diretamente
+npx --yes expo start --clear
 ```
 
-### Opção 3: Usar npm em vez de pnpm
+### Opção 4: Usar npm em vez de pnpm
 
 ```powershell
 cd "C:\Users\Mateus\Desktop\Bora UI\apps\app-instrutor"
 npm start
-```
-
-### Opção 4: Solução Permanente (Recomendado para evitar o problema)
-
-Execute no PowerShell como **Administrador** para limpar as variáveis do sistema:
-
-```powershell
-# Remover variáveis npm_config do sistema
-Get-ChildItem Env: | Where-Object { $_.Name -like "npm_config_*" } | ForEach-Object {
-    [Environment]::SetEnvironmentVariable($_.Name, $null, "User")
-    [Environment]::SetEnvironmentVariable($_.Name, $null, "Machine")
-}
-
-# Reiniciar o PowerShell e tentar novamente
-cd "C:\Users\Mateus\Desktop\Bora UI\apps\app-instrutor"
-pnpm start
 ```
 

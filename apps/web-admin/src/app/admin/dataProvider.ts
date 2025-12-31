@@ -52,11 +52,247 @@ const payments = [
   },
 ];
 
+const vehicles = [
+  {
+    id: "1",
+    userId: "1",
+    brand: "Toyota",
+    model: "Corolla",
+    year: 2020,
+    color: "Branco",
+    plateLastFour: "1D23",
+    photoUrl: "https://via.placeholder.com/150",
+    category: "SEDAN",
+    transmission: "AUTOMATICO",
+    fuel: "FLEX",
+    engine: "2.0",
+    horsePower: 140,
+    hasDualPedal: true,
+    pedalPhotoUrl: "https://via.placeholder.com/150",
+    acceptStudentCar: false,
+    safetyFeatures: ["ABS", "Air-bag duplo"],
+    comfortFeatures: ["Ar-digital", "Bluetooth"],
+    status: "active",
+    createdAt: new Date("2024-01-10"),
+    user: {
+      id: "1",
+      name: "Carlos Oliveira",
+      email: "carlos@example.com",
+      role: "INSTRUCTOR",
+    },
+  },
+  {
+    id: "2",
+    userId: "2",
+    brand: "Honda",
+    model: "Civic",
+    year: 2019,
+    color: "Preto",
+    plateLastFour: "2E34",
+    photoUrl: "https://via.placeholder.com/150",
+    category: "SEDAN",
+    transmission: "MANUAL",
+    fuel: "FLEX",
+    engine: "1.8",
+    horsePower: 130,
+    hasDualPedal: false,
+    pedalPhotoUrl: null,
+    acceptStudentCar: false,
+    safetyFeatures: ["ABS"],
+    comfortFeatures: ["Ar-digital"],
+    status: "active",
+    createdAt: new Date("2024-02-15"),
+    user: {
+      id: "2",
+      name: "Maria Santos",
+      email: "maria@example.com",
+      role: "STUDENT",
+    },
+  },
+];
+
+const ratings = [
+  {
+    id: "1",
+    lessonId: "1",
+    studentId: "1",
+    instructorId: "1",
+    rating: 5,
+    comment: "Excelente instrutor, muito paciente e didático!",
+    createdAt: new Date("2024-12-11"),
+    student: {
+      id: "1",
+      name: "João Silva",
+      email: "joao@example.com",
+    },
+    instructor: {
+      id: "1",
+      name: "Carlos Oliveira",
+      email: "carlos@example.com",
+    },
+    lesson: {
+      id: "1",
+      scheduledAt: new Date("2024-12-10T10:00:00"),
+      status: "FINISHED",
+    },
+  },
+  {
+    id: "2",
+    lessonId: "1",
+    studentId: "2",
+    instructorId: "1",
+    rating: 4,
+    comment: "Bom instrutor, mas poderia ser mais pontual.",
+    createdAt: new Date("2024-12-11"),
+    student: {
+      id: "2",
+      name: "Maria Santos",
+      email: "maria@example.com",
+    },
+    instructor: {
+      id: "1",
+      name: "Carlos Oliveira",
+      email: "carlos@example.com",
+    },
+    lesson: {
+      id: "1",
+      scheduledAt: new Date("2024-12-10T10:00:00"),
+      status: "FINISHED",
+    },
+  },
+];
+
+const bundles = [
+  {
+    id: "1",
+    name: "Pacote 5 Aulas",
+    description: "Pacote básico com 5 aulas",
+    totalLessons: 5,
+    price: 600.0,
+    discount: 10,
+    expiryDays: 90,
+    isActive: true,
+    featured: false,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+  },
+  {
+    id: "2",
+    name: "Pacote 20 Aulas Premium",
+    description: "Pacote premium com 20 aulas e desconto especial",
+    totalLessons: 20,
+    price: 2000.0,
+    discount: 20,
+    expiryDays: 180,
+    isActive: true,
+    featured: true,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+  },
+];
+
+const referrals = [
+  {
+    id: "1",
+    referrerId: "1",
+    referredId: "2",
+    rewardAmount: 50.0,
+    rewardPaid: false,
+    createdAt: new Date("2024-02-01"),
+    referrer: {
+      id: "1",
+      name: "João Silva",
+      email: "joao@example.com",
+    },
+    referred: {
+      id: "2",
+      name: "Maria Santos",
+      email: "maria@example.com",
+    },
+  },
+];
+
+const skills = [
+  {
+    id: "1",
+    name: "Baliza",
+    description: "Estacionamento em vaga",
+    category: "INTERMEDIATE",
+    weight: 2,
+    order: 1,
+    isActive: true,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+  },
+  {
+    id: "2",
+    name: "Controle de Embreagem",
+    description: "Domínio do uso da embreagem",
+    category: "BASIC",
+    weight: 1,
+    order: 1,
+    isActive: true,
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+  },
+];
+
+const chatMessages = [
+  {
+    id: "1",
+    lessonId: "1",
+    senderId: "1",
+    content: "Olá, estou a caminho!",
+    messageType: "text",
+    mediaUrl: null,
+    mediaDuration: null,
+    isRead: true,
+    readAt: new Date("2024-12-10T09:50:00"),
+    createdAt: new Date("2024-12-10T09:45:00"),
+    sender: {
+      id: "1",
+      name: "João Silva",
+      email: "joao@example.com",
+    },
+    lesson: {
+      id: "1",
+      scheduledAt: new Date("2024-12-10T10:00:00"),
+    },
+  },
+  {
+    id: "2",
+    lessonId: "1",
+    senderId: "1",
+    content: "Foto do local",
+    messageType: "image",
+    mediaUrl: "https://via.placeholder.com/300",
+    mediaDuration: null,
+    isRead: false,
+    readAt: null,
+    createdAt: new Date("2024-12-10T09:55:00"),
+    sender: {
+      id: "1",
+      name: "João Silva",
+      email: "joao@example.com",
+    },
+    lesson: {
+      id: "1",
+      scheduledAt: new Date("2024-12-10T10:00:00"),
+    },
+  },
+];
+
 const db: Record<string, any[]> = {
   students,
   instructors,
   lessons,
   payments,
+  vehicles,
+  ratings,
+  bundles,
+  referrals,
+  skills,
+  chatMessages,
 };
 
 export const dataProvider: DataProvider = {

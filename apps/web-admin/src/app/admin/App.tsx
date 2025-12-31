@@ -11,7 +11,14 @@ import {
   GraduationCap, 
   BookOpen,
   CreditCard,
-  Settings
+  Settings,
+  AlertTriangle,
+  Car,
+  Star,
+  Package,
+  UserPlus,
+  Target,
+  MessageSquare
 } from "lucide-react";
 
 // Import resource components
@@ -29,6 +36,31 @@ import { LessonList } from "./resources/lessons/LessonList";
 import { LessonEdit } from "./resources/lessons/LessonEdit";
 import { LessonCreate } from "./resources/lessons/LessonCreate";
 import { LessonShow } from "./resources/lessons/LessonShow";
+import { EmergencyList } from "./resources/emergencies/EmergencyList";
+import { EmergencyShow } from "./resources/emergencies/EmergencyShow";
+
+import { VehicleList } from "./resources/vehicles/VehicleList";
+import { VehicleShow } from "./resources/vehicles/VehicleShow";
+import { VehicleEdit } from "./resources/vehicles/VehicleEdit";
+
+import { RatingList } from "./resources/ratings/RatingList";
+import { RatingShow } from "./resources/ratings/RatingShow";
+
+import { BundleList } from "./resources/bundles/BundleList";
+import { BundleShow } from "./resources/bundles/BundleShow";
+import { BundleEdit } from "./resources/bundles/BundleEdit";
+import { BundleCreate } from "./resources/bundles/BundleCreate";
+
+import { ReferralList } from "./resources/referrals/ReferralList";
+import { ReferralShow } from "./resources/referrals/ReferralShow";
+
+import { SkillList } from "./resources/skills/SkillList";
+import { SkillShow } from "./resources/skills/SkillShow";
+import { SkillEdit } from "./resources/skills/SkillEdit";
+import { SkillCreate } from "./resources/skills/SkillCreate";
+
+import { ChatMessageList } from "./resources/chatMessages/ChatMessageList";
+import { ChatMessageShow } from "./resources/chatMessages/ChatMessageShow";
 
 export default function App() {
   return (
@@ -70,6 +102,60 @@ export default function App() {
         list={ListGuesser}
         icon={CreditCard}
         options={{ label: "Pagamentos" }}
+      />
+      <Resource
+        name="emergencies"
+        list={EmergencyList}
+        show={EmergencyShow}
+        icon={AlertTriangle}
+        options={{ label: "Emergências (SOS)" }}
+      />
+      <Resource
+        name="vehicles"
+        list={VehicleList}
+        show={VehicleShow}
+        edit={VehicleEdit}
+        icon={Car}
+        options={{ label: "Veículos" }}
+      />
+      <Resource
+        name="ratings"
+        list={RatingList}
+        show={RatingShow}
+        icon={Star}
+        options={{ label: "Avaliações" }}
+      />
+      <Resource
+        name="bundles"
+        list={BundleList}
+        show={BundleShow}
+        edit={BundleEdit}
+        create={BundleCreate}
+        icon={Package}
+        options={{ label: "Pacotes de Aulas" }}
+      />
+      <Resource
+        name="referrals"
+        list={ReferralList}
+        show={ReferralShow}
+        icon={UserPlus}
+        options={{ label: "Indicações" }}
+      />
+      <Resource
+        name="skills"
+        list={SkillList}
+        show={SkillShow}
+        edit={SkillEdit}
+        create={SkillCreate}
+        icon={Target}
+        options={{ label: "Habilidades" }}
+      />
+      <Resource
+        name="chatMessages"
+        list={ChatMessageList}
+        show={ChatMessageShow}
+        icon={MessageSquare}
+        options={{ label: "Mensagens" }}
       />
     </Admin>
   );

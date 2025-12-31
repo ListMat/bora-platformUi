@@ -5,11 +5,18 @@ import { httpBatchLink } from "@trpc/client";
 import superjson from "superjson";
 import { useState, useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
-import { StripeProvider } from "@stripe/stripe-react-native";
 import { StatusBar } from "expo-status-bar";
-import "@/lib/mapbox"; // Inicializar Mapbox
+import { useColorScheme, Platform } from "react-native";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export default function RootLayout() {
+  // Detectar tema do sistema
+  const colorScheme = useColorScheme();
+
+  // Inicializar notificações push (apenas em mobile)
+  // Inicializar notificações push
+  useNotifications();
+
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: {
       queries: {
@@ -18,7 +25,7 @@ export default function RootLayout() {
       },
     },
   }));
-  
+
   const [trpcClient] = useState(() =>
     trpc.createClient({
       transformer: superjson,
@@ -36,29 +43,36 @@ export default function RootLayout() {
     })
   );
 
-  const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
-
-  if (!publishableKey) {
-    console.warn('[WARN] EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set. Stripe will not work.');
-  }
-
   return (
-    <StripeProvider publishableKey={publishableKey}>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="light" />
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="screens/SolicitarAulaFlow"
-              options={{
-                title: "Solicitar Aula",
-                presentation: "fullScreenModal",
-              }}
-            />
-          </Stack>
-        </QueryClientProvider>
-      </trpc.Provider>
-    </StripeProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="screens/SolicitarAulaFlow"
+            options={{
+              title: "Solicitar Aula",
+              presentation: "fullScreenModal",
+            }}
+          />
+          <Stack.Screen
+            name="screens/onboarding/OnboardingFlow"
+            options={{
+              title: "Complete seu Cadastro",
+              presentation: "fullScreenModal",
+              headerShown: false,
+            }}
+          />
+          <Stack.Screen
+            name="screens/editProfile"
+            options={{
+              title: "Editar Perfil",
+              presentation: "card",
+            }}
+          />
+        </Stack>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }

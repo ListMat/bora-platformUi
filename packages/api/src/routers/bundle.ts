@@ -104,6 +104,72 @@ export const bundleRouter = router({
       };
     }),
 
+  // Criar Checkout Session para pacote (para WebView)
+  createCheckoutSession: protectedProcedure
+    .input(
+      z.object({
+        bundlePurchaseId: z.string(),
+        successUrl: z.string().optional(),
+        cancelUrl: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const purchase = await ctx.prisma.bundlePurchase.findUnique({
+        where: { id: input.bundlePurchaseId },
+        include: { student: { include: { user: true } }, bundle: true },
+      });
+
+      if (!purchase) {
+        throw new Error("Purchase not found");
+      }
+
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      const successUrl = input.successUrl || `${baseUrl}/payment/success?bundlePurchaseId=${purchase.id}`;
+      const cancelUrl = input.cancelUrl || `${baseUrl}/payment/cancel?bundlePurchaseId=${purchase.id}`;
+
+      // Criar Checkout Session
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "brl",
+              product_data: {
+                name: purchase.bundle.name,
+                description: `Pacote com ${purchase.bundle.totalLessons} aulas`,
+              },
+              unit_amount: Math.round(Number(purchase.amount) * 100), // Centavos
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata: {
+          bundlePurchaseId: purchase.id,
+          studentId: purchase.studentId,
+          bundleName: purchase.bundle.name,
+        },
+      });
+
+      // Criar registro de pagamento
+      await ctx.prisma.bundlePayment.create({
+        data: {
+          bundlePurchaseId: purchase.id,
+          amount: purchase.amount,
+          method: "CREDIT_CARD",
+          status: PaymentStatus.PROCESSING,
+          stripePaymentId: session.id,
+        },
+      });
+
+      return {
+        sessionId: session.id,
+        url: session.url,
+      };
+    }),
+
   // Confirmar compra de pacote
   confirmPurchase: protectedProcedure
     .input(z.object({ bundlePurchaseId: z.string() }))

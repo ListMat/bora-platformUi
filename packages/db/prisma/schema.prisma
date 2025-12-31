@@ -508,6 +508,11 @@ model ChatMessage {
   
   content    String   @db.Text
   
+  // Mídia (foto/áudio)
+  messageType String  @default("text") // "text" | "image" | "audio"
+  mediaUrl    String?
+  mediaDuration Int?  // Duração do áudio em segundos
+  
   // Status
   isRead     Boolean  @default(false)
   readAt     DateTime?

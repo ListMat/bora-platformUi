@@ -1,92 +1,89 @@
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
-import { useState, useEffect, useCallback } from "react";
-import { useStripe } from "@stripe/stripe-react-native";
+import { useState, useEffect } from "react";
+import * as WebBrowser from "expo-web-browser";
+
+// Completar autenticação do WebBrowser
+WebBrowser.maybeCompleteAuthSession();
 
 export default function PaymentSheetScreen() {
   const { paymentId, lessonId } = useLocalSearchParams<{ paymentId: string; lessonId: string }>();
   const router = useRouter();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const createIntentMutation = trpc.payment.createIntent.useMutation();
+  const createCheckoutMutation = trpc.payment.createCheckoutSession.useMutation();
   const confirmMutation = trpc.payment.confirm.useMutation();
 
-  const handleInitializePayment = useCallback(async () => {
-    try {
-      if (!initPaymentSheet || !presentPaymentSheet) {
-        Alert.alert("Erro", "Stripe não está configurado. Verifique a chave pública do Stripe.");
-        return;
-      }
-      setLoading(true);
-      const result = await createIntentMutation.mutateAsync({ paymentId });
-
-      if (!result.clientSecret) {
-        Alert.alert("Erro", "Não foi possível inicializar o pagamento");
-        return;
-      }
-
-      const { error: initError } = await initPaymentSheet({
-        paymentIntentClientSecret: result.clientSecret,
-        merchantDisplayName: "BORA - Aulas de Direção",
-      });
-
-      if (initError) {
-        Alert.alert("Erro", initError.message);
-        setLoading(false);
-        return;
-      }
-
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        if (presentError.code !== "Canceled") {
-          Alert.alert("Erro", presentError.message);
-        }
-        setLoading(false);
-        return;
-      }
-
-      // Pagamento bem-sucedido
-      await confirmMutation.mutateAsync({ paymentId });
-      Alert.alert("Sucesso", "Pagamento realizado com sucesso!", [
-        {
-          text: "OK",
-          onPress: () => {
-            if (lessonId) {
-              router.push(`/screens/lessonLive?id=${lessonId}`);
-            } else {
-              router.back();
-            }
-          },
-        },
-      ]);
-    } catch (error: any) {
-      Alert.alert("Erro", error.message || "Erro ao processar pagamento");
-    } finally {
-      setLoading(false);
-    }
-  }, [paymentId, initPaymentSheet, presentPaymentSheet, createIntentMutation, confirmMutation, router, lessonId]);
-
   useEffect(() => {
-    if (paymentId) {
-      handleInitializePayment();
-    }
-  }, [paymentId, handleInitializePayment]);
+    if (!paymentId) return;
+
+    const handlePayment = async () => {
+      try {
+        setLoading(true);
+        
+        // Criar checkout session
+        const result = await createCheckoutMutation.mutateAsync({
+          paymentId,
+          successUrl: `bora-aluno://payment/success?paymentId=${paymentId}`,
+          cancelUrl: `bora-aluno://payment/cancel?paymentId=${paymentId}`,
+        });
+
+        if (!result.url) {
+          Alert.alert("Erro", "Não foi possível inicializar o pagamento");
+          setLoading(false);
+          return;
+        }
+
+        // Abrir checkout no browser
+        const browserResult = await WebBrowser.openBrowserAsync(result.url, {
+          showInRecents: true,
+        });
+
+        // Se o usuário completou o pagamento
+        if (browserResult.type === "success" || browserResult.type === "dismiss") {
+          // Verificar se o pagamento foi confirmado
+          await confirmMutation.mutateAsync({ paymentId });
+          
+          Alert.alert("Sucesso", "Pagamento realizado com sucesso!", [
+            {
+              text: "OK",
+              onPress: () => {
+                if (lessonId) {
+                  router.push(`/screens/lessonLive?id=${lessonId}`);
+                } else {
+                  router.back();
+                }
+              },
+            },
+          ]);
+        } else if (browserResult.type === "cancel") {
+          Alert.alert("Cancelado", "Pagamento cancelado");
+          router.back();
+        }
+      } catch (error: any) {
+        Alert.alert("Erro", error.message || "Erro ao processar pagamento");
+        router.back();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    handlePayment();
+  }, [paymentId, lessonId, router]);
 
   return (
     <View style={styles.container}>
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#00C853" />
-          <Text style={styles.loadingText}>Processando pagamento...</Text>
+          <Text style={styles.loadingText}>Abrindo checkout...</Text>
         </View>
       ) : (
         <View style={styles.content}>
           <Text style={styles.title}>Pagamento com Cartão</Text>
           <Text style={styles.subtitle}>
-            O formulário de pagamento será exibido em breve
+            Redirecionando para o checkout seguro...
           </Text>
         </View>
       )}

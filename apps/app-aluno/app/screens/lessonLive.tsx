@@ -4,13 +4,16 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect } from "react";
 import * as Location from "expo-location";
-import Mapbox, { Camera, PointAnnotation } from "@rnmapbox/maps";
-import { DARK_MAP_STYLE } from "@/lib/mapbox";
+// TODO: Descomentar quando adicionar react-native-maps de volta
+// import MapView, { Marker } from "react-native-maps";
+// import { MAP_PROVIDER } from "@/lib/maps";
 import { colors, radius, spacing, typography } from "@/theme";
+import { useHaptic } from "@/hooks/useHaptic";
 
 export default function LessonLiveScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const haptic = useHaptic();
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const { data: lesson, isLoading, refetch } = trpc.lesson.getById.useQuery(
@@ -25,6 +28,19 @@ export default function LessonLiveScreen() {
     },
     onError: (error) => {
       Alert.alert("Erro", error.message);
+    },
+  });
+
+  const sosMutation = trpc.emergency.create.useMutation({
+    onSuccess: (data) => {
+      Alert.alert(
+        "SOS Ativado",
+        data.message,
+        [{ text: "OK" }]
+      );
+    },
+    onError: (error) => {
+      Alert.alert("Erro", error.message || "Não foi possível enviar o SOS");
     },
   });
 
@@ -78,83 +94,139 @@ export default function LessonLiveScreen() {
       "Tem certeza que deseja cancelar esta aula?",
       [
         { text: "Não", style: "cancel" },
-        { text: "Sim", style: "destructive", onPress: () => cancelMutation.mutate({ lessonId: id }) },
+        { text: "Sim", style: "destructive", onPress: () => { haptic.warning(); cancelMutation.mutate({ lessonId: id }); } },
       ]
     );
   };
 
-  const handleSOS = () => {
-    Alert.alert("SOS", "Função SOS será implementada");
-    // TODO: Implementar SOS (item 7)
+  const handleSOS = async () => {
+    if (!userLocation) {
+      Alert.alert("Erro", "Não foi possível obter sua localização");
+      return;
+    }
+
+    Alert.alert(
+      "🚨 EMERGÊNCIA",
+      "Você está acionando o botão de emergência. Isso notificará imediatamente nossa equipe e as autoridades. Deseja continuar?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel",
+        },
+        {
+          text: "ACIONAR SOS",
+          style: "destructive",
+          onPress: () => {
+            haptic.heavy();
+            sosMutation.mutate({
+              lessonId: id,
+              latitude: userLocation.latitude,
+              longitude: userLocation.longitude,
+              description: `Emergência durante aula com instrutor ${lesson?.instructor.user.name}`,
+            });
+          },
+        },
+      ]
+    );
   };
 
-  const centerLocation = userLocation || instructorLocation || 
-    (lesson.pickupLatitude && lesson.pickupLongitude 
+  const centerLocation = userLocation || instructorLocation ||
+    (lesson.pickupLatitude && lesson.pickupLongitude
       ? { latitude: lesson.pickupLatitude, longitude: lesson.pickupLongitude }
       : null);
 
   return (
     <View style={styles.container}>
       {/* Mapa */}
+      {/* TODO: Descomentar quando adicionar react-native-maps de volta */}
       {centerLocation && (
-        <Mapbox.MapView
+        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background.primary }]}>
+          <Text style={{ color: colors.text.secondary, textAlign: 'center', padding: 20 }}>
+            Mapa temporariamente desabilitado{'\n'}
+            Aula em andamento
+          </Text>
+        </View>
+      )}
+      {/*
+      {centerLocation && (
+        <MapView
           style={styles.map}
-          styleURL={DARK_MAP_STYLE}
-          logoEnabled={false}
-          attributionEnabled={false}
+          provider={MAP_PROVIDER}
+          initialRegion={{
+            latitude: centerLocation.latitude,
+            longitude: centerLocation.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation={false}
+          showsMyLocationButton={false}
+          toolbarEnabled={false}
         >
-          <Camera
-            defaultSettings={{
-              centerCoordinate: [centerLocation.longitude, centerLocation.latitude],
-              zoomLevel: 14,
-            }}
-          />
-          
-          {/* Marcador do aluno */}
           {userLocation && (
-            <PointAnnotation
-              id="user-location"
-              coordinate={[userLocation.longitude, userLocation.latitude]}
+            <Marker
+              coordinate={{
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              }}
+              identifier="user-location"
             >
               <View style={styles.userMarker}>
                 <View style={styles.userMarkerDot} />
               </View>
-            </PointAnnotation>
+            </Marker>
           )}
 
-          {/* Marcador do instrutor */}
           {instructorLocation && (
-            <PointAnnotation
-              id="instructor-location"
-              coordinate={[instructorLocation.longitude, instructorLocation.latitude]}
+            <Marker
+              coordinate={{
+                latitude: instructorLocation.latitude,
+                longitude: instructorLocation.longitude,
+              }}
+              identifier="instructor-location"
             >
               <View style={styles.instructorMarker}>
                 <Ionicons name="person" size={20} color={colors.text.white} />
               </View>
-            </PointAnnotation>
+            </Marker>
           )}
 
-          {/* Marcador do pickup */}
           {lesson.pickupLatitude && lesson.pickupLongitude && (
-            <PointAnnotation
-              id="pickup-location"
-              coordinate={[lesson.pickupLongitude, lesson.pickupLatitude]}
+            <Marker
+              coordinate={{
+                latitude: lesson.pickupLatitude,
+                longitude: lesson.pickupLongitude,
+              }}
+              identifier="pickup-location"
             >
               <View style={styles.pickupMarker}>
                 <Ionicons name="location" size={20} color={colors.text.white} />
               </View>
-            </PointAnnotation>
+            </Marker>
           )}
-        </Mapbox.MapView>
+        </MapView>
       )}
+      */}
 
       {/* Info Card */}
       <View style={styles.infoCard}>
         <View style={styles.header}>
           <Text style={styles.statusText}>{getStatusMessage()}</Text>
-          <TouchableOpacity onPress={handleSOS} style={styles.sosButton}>
-            <Text style={styles.sosText}>SOS</Text>
-          </TouchableOpacity>
+          {(lesson.status === "ACTIVE" || lesson.status === "SCHEDULED") && (
+            <TouchableOpacity
+              onPress={handleSOS}
+              style={styles.sosButton}
+              disabled={sosMutation.isLoading}
+            >
+              {sosMutation.isLoading ? (
+                <ActivityIndicator size="small" color={colors.text.white} />
+              ) : (
+                <>
+                  <Ionicons name="warning" size={16} color={colors.text.white} />
+                  <Text style={styles.sosText}>SOS</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.instructorInfo}>
@@ -174,7 +246,7 @@ export default function LessonLiveScreen() {
         )}
 
         {lesson.status === "FINISHED" && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.rateButton}
             onPress={() => router.push(`/screens/rating?lessonId=${id}`)}
           >
@@ -232,6 +304,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing["2xl"],
     paddingVertical: spacing.sm,
     borderRadius: radius.full,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   sosText: {
     color: colors.text.white,

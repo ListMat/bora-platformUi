@@ -10,14 +10,15 @@ import {
   Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, spacing, typography } from "@/theme";
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import Mapbox, { Camera, PointAnnotation } from "@rnmapbox/maps";
-import { DARK_MAP_STYLE } from "@/lib/mapbox";
+import MapView, { Marker } from "react-native-maps";
+import { MAP_PROVIDER, MAP_STYLES } from "@/lib/maps";
+import { useHaptic } from "@/hooks/useHaptic";
 
 const { width, height } = Dimensions.get("window");
 
@@ -56,13 +57,14 @@ export default function ExpandMapModal({
   onClose,
 }: ExpandMapModalProps) {
   const router = useRouter();
+  const haptic = useHaptic();
   const [selectedInstructor, setSelectedInstructor] = useState<string | null>(null);
-  const mapRef = useRef<Mapbox.MapView>(null);
+  const mapRef = useRef<MapView>(null);
   const bottomSheetRef = useRef<BottomSheet>(null);
   const flatListRef = useRef<FlatList>(null);
 
-  // Snap points para o bottom sheet (mini: 200px, expandido: 400px)
-  const snapPoints = [200, 400];
+  // Snap points para o bottom sheet (3 níveis: 25%, 50%, 90%)
+  const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
 
   // Ajustar zoom para mostrar todos os instrutores quando o modal abrir
   useEffect(() => {
@@ -80,21 +82,23 @@ export default function ExpandMapModal({
           const maxLon = Math.max(...lons);
           const minLat = Math.min(...lats);
           const maxLat = Math.max(...lats);
-          
+
           const centerLon = (minLon + maxLon) / 2;
           const centerLat = (minLat + maxLat) / 2;
-          
+
           // Calcular zoom level baseado na distância
           const latDelta = maxLat - minLat;
           const lonDelta = maxLon - minLon;
           const maxDelta = Math.max(latDelta, lonDelta);
-          const zoomLevel = maxDelta > 0.1 ? 11 : maxDelta > 0.05 ? 12 : 13;
-          
-          mapRef.current?.setCamera({
-            centerCoordinate: [centerLon, centerLat],
-            zoomLevel,
-            animationDuration: 500,
-          });
+          const finalLatDelta = maxDelta > 0.1 ? 0.1 : maxDelta > 0.05 ? 0.05 : 0.02;
+          const finalLonDelta = maxDelta > 0.1 ? 0.1 : maxDelta > 0.05 ? 0.05 : 0.02;
+
+          mapRef.current?.animateToRegion({
+            latitude: centerLat,
+            longitude: centerLon,
+            latitudeDelta: finalLatDelta,
+            longitudeDelta: finalLonDelta,
+          }, 500);
         }, 300);
       }
     }
@@ -106,11 +110,12 @@ export default function ExpandMapModal({
     const instructor = instructors.find((i) => i.id === instructorId);
     if (instructor && instructor.latitude && instructor.longitude && mapRef.current) {
       // Animar mapa para o instrutor selecionado
-      mapRef.current.setCamera({
-        centerCoordinate: [instructor.longitude, instructor.latitude],
-        zoomLevel: 14,
-        animationDuration: 500,
-      });
+      mapRef.current.animateToRegion({
+        latitude: instructor.latitude,
+        longitude: instructor.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 500);
     }
 
     // Expandir bottom sheet e scrollar para o card do instrutor
@@ -129,7 +134,10 @@ export default function ExpandMapModal({
     return (
       <TouchableOpacity
         style={[styles.instructorCard, isSelected && styles.instructorCardSelected]}
-        onPress={() => handleMarkerPress(item.id)}
+        onPress={() => {
+          haptic.light();
+          handleMarkerPress(item.id);
+        }}
         activeOpacity={0.8}
         accessibilityLabel={`Instrutor ${item.user.name || "Sem nome"}, nota ${item.averageRating?.toFixed(1) || "0.0"}`}
         accessibilityRole="button"
@@ -196,49 +204,62 @@ export default function ExpandMapModal({
     >
       <GestureHandlerRootView style={styles.gestureContainer}>
         <StatusBar style="light" translucent />
-        
+
         {/* MapContainer - Ocupa 100% da tela (absolute) */}
         <View style={styles.mapContainer}>
           {region && (
-            <Mapbox.MapView
+            <MapView
               ref={mapRef}
               style={styles.map}
-              styleURL={DARK_MAP_STYLE}
-              logoEnabled={false}
-              attributionEnabled={false}
+              provider={MAP_PROVIDER}
+              customMapStyle={MAP_STYLES.dark}
+              initialRegion={{
+                latitude: region.latitude,
+                longitude: region.longitude,
+                latitudeDelta: region.latitudeDelta || 0.05,
+                longitudeDelta: region.longitudeDelta || 0.05,
+              }}
+              showsUserLocation={false}
+              showsMyLocationButton={false}
+              toolbarEnabled={false}
             >
-              <Camera
-                defaultSettings={{
-                  centerCoordinate: [region.longitude, region.latitude],
-                  zoomLevel: 12,
-                }}
-              />
-              
               {/* Marcador da localização do usuário */}
-              <Mapbox.PointAnnotation
-                id="user-location"
-                coordinate={[region.longitude, region.latitude]}
+              <Marker
+                coordinate={{
+                  latitude: region.latitude,
+                  longitude: region.longitude,
+                }}
+                identifier="user-location"
               >
                 <View style={styles.userLocationMarker}>
                   <View style={styles.userLocationDot} />
                 </View>
-              </Mapbox.PointAnnotation>
+              </Marker>
 
               {/* Marcadores dos instrutores */}
               {instructors.map((instructor) => {
                 if (!instructor.latitude || !instructor.longitude) return null;
-                
+
                 const isSelected = selectedInstructor === instructor.id;
-                
+
                 return (
-                  <Mapbox.PointAnnotation
+                  <Marker
                     key={instructor.id}
-                    id={`instructor-${instructor.id}`}
-                    coordinate={[instructor.longitude, instructor.latitude]}
-                    onSelected={() => handleMarkerPress(instructor.id)}
+                    identifier={`instructor-${instructor.id}`}
+                    coordinate={{
+                      latitude: instructor.latitude,
+                      longitude: instructor.longitude,
+                    }}
+                    onPress={() => {
+                      haptic.light();
+                      handleMarkerPress(instructor.id);
+                    }}
                   >
                     <TouchableOpacity
-                      onPress={() => handleMarkerPress(instructor.id)}
+                      onPress={() => {
+                        haptic.light();
+                        handleMarkerPress(instructor.id);
+                      }}
                       activeOpacity={0.8}
                     >
                       <View
@@ -265,10 +286,10 @@ export default function ExpandMapModal({
                         </View>
                       </View>
                     </TouchableOpacity>
-                  </Mapbox.PointAnnotation>
+                  </Marker>
                 );
               })}
-            </Mapbox.MapView>
+            </MapView>
           )}
         </View>
 
@@ -276,7 +297,10 @@ export default function ExpandMapModal({
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.closeButton}
-            onPress={onClose}
+            onPress={() => {
+              haptic.light();
+              onClose();
+            }}
             accessibilityLabel="Fechar mapa"
             accessibilityRole="button"
           >
@@ -287,16 +311,18 @@ export default function ExpandMapModal({
         {/* Bottom Sheet (sobre o MapContainer) */}
         <BottomSheet
           ref={bottomSheetRef}
-          index={0} // Começa no primeiro snap point (200px)
+          index={1} // Começa no meio (50%)
           snapPoints={snapPoints}
-          enablePanDownToClose={true}
-          onClose={onClose}
+          enablePanDownToClose={false} // Não fecha ao arrastar para baixo
           backgroundStyle={styles.bottomSheetBackground}
           handleIndicatorStyle={styles.bottomSheetHandleIndicator}
+          onChange={(index) => {
+            if (index === 2) haptic.light(); // Feedback ao expandir máximo
+          }}
         >
           <View style={styles.bottomSheetContent}>
             <Text style={styles.bottomSheetTitle}>Instrutores próximos</Text>
-            
+
             {instructors.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="location-outline" size={48} color={colors.text.tertiary} />

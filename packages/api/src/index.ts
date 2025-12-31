@@ -2,6 +2,7 @@ import { router } from "./trpc";
 import { userRouter } from "./routers/user";
 import { lessonRouter } from "./routers/lesson";
 import { instructorRouter } from "./routers/instructor";
+import { studentRouter } from "./routers/student";
 import { paymentRouter } from "./routers/payment";
 import { ratingRouter } from "./routers/rating";
 import { emergencyRouter } from "./routers/emergency";
@@ -11,11 +12,13 @@ import { skillRouter } from "./routers/skill";
 import { vehicleRouter } from "./routers/vehicle";
 import { planRouter } from "./routers/plan";
 import { notificationRouter } from "./routers/notification";
+import { adminRouter } from "./routers/admin";
 
 export const appRouter = router({
   user: userRouter,
   lesson: lessonRouter,
   instructor: instructorRouter,
+  student: studentRouter,
   payment: paymentRouter,
   rating: ratingRouter,
   emergency: emergencyRouter,
@@ -25,6 +28,7 @@ export const appRouter = router({
   vehicle: vehicleRouter,
   plan: planRouter,
   notification: notificationRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,6 +1,17 @@
 import { z } from "zod";
 import { router, protectedProcedure, instructorProcedure, adminProcedure } from "../trpc";
 import { InstructorStatus } from "@bora/db";
+import { validateCPF, validateCNH } from "../utils/validators";
+import {
+  uploadInstructorDocument,
+  base64ToBuffer,
+  generateDocumentFilename,
+} from "../modules/instructorDocumentStorage";
+import {
+  createConnectAccount,
+  createConnectOnboardingLink,
+  checkConnectAccountStatus,
+} from "../modules/stripeConnect";
 
 export const instructorRouter = router({
   // Buscar instrutores próximos
@@ -126,13 +137,36 @@ export const instructorRouter = router({
   create: protectedProcedure
     .input(
       z.object({
-        cpf: z.string(),
-        cnhNumber: z.string(),
-        credentialNumber: z.string(),
-        credentialExpiry: z.date(),
-        city: z.string(),
-        state: z.string(),
-        basePrice: z.number().positive(),
+        cpf: z
+          .string()
+          .min(11, "CPF deve ter 11 dígitos")
+          .max(14, "CPF inválido")
+          .refine((cpf) => validateCPF(cpf), "CPF inválido"),
+        cnhNumber: z
+          .string()
+          .min(11, "CNH deve ter 11 dígitos")
+          .max(11, "CNH inválida")
+          .refine((cnh) => validateCNH(cnh), "CNH inválida"),
+        credentialNumber: z
+          .string()
+          .min(1, "Número da credencial é obrigatório"),
+        credentialExpiry: z
+          .date()
+          .refine(
+            (date) => date > new Date(),
+            "Credencial não pode estar vencida"
+          ),
+        city: z.string().min(1, "Cidade é obrigatória"),
+        state: z
+          .string()
+          .length(2, "Estado deve ter 2 caracteres (ex: SP)")
+          .toUpperCase(),
+        basePrice: z
+          .number()
+          .positive("Preço deve ser positivo")
+          .min(50, "Preço mínimo é R$ 50,00")
+          .max(1000, "Preço máximo é R$ 1.000,00"),
+        phone: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -144,11 +178,42 @@ export const instructorRouter = router({
         throw new Error("User not found");
       }
 
+      // Verificar se já existe um perfil de instrutor
+      const existingInstructor = await ctx.prisma.instructor.findUnique({
+        where: { userId: user.id },
+      });
+
+      if (existingInstructor) {
+        throw new Error("Instructor profile already exists");
+      }
+
+      // Verificar se CPF já está em uso
+      const cpfInUse = await ctx.prisma.instructor.findUnique({
+        where: { cpf: input.cpf.replace(/\D/g, "") },
+      });
+
+      if (cpfInUse) {
+        throw new Error("CPF já está em uso");
+      }
+
+      // Verificar se CNH já está em uso
+      const cnhInUse = await ctx.prisma.instructor.findUnique({
+        where: { cnhNumber: input.cnhNumber.replace(/\D/g, "") },
+      });
+
+      if (cnhInUse) {
+        throw new Error("CNH já está em uso");
+      }
+
+      // Limpar formatação do CPF e CNH
+      const cleanCPF = input.cpf.replace(/\D/g, "");
+      const cleanCNH = input.cnhNumber.replace(/\D/g, "");
+
       const instructor = await ctx.prisma.instructor.create({
         data: {
           userId: user.id,
-          cpf: input.cpf,
-          cnhNumber: input.cnhNumber,
+          cpf: cleanCPF,
+          cnhNumber: cleanCNH,
           credentialNumber: input.credentialNumber,
           credentialExpiry: input.credentialExpiry,
           city: input.city,
@@ -158,11 +223,124 @@ export const instructorRouter = router({
         },
       });
 
+      // Atualizar telefone do usuário se fornecido
+      if (input.phone) {
+        await ctx.prisma.user.update({
+          where: { id: user.id },
+          data: { phone: input.phone },
+        });
+      }
+
       // Atualizar role do usuário
       await ctx.prisma.user.update({
         where: { id: user.id },
         data: { role: "INSTRUCTOR" },
       });
+
+      return instructor;
+    }),
+
+  // Upload de documento (CNH ou Credencial)
+  uploadDocument: instructorProcedure
+    .input(
+      z.object({
+        documentType: z.enum(["cnh", "credential"]),
+        documentBase64: z.string().min(1, "Documento é obrigatório"),
+        filename: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      if (!user?.instructor) {
+        throw new Error("Instructor profile not found");
+      }
+
+      // Converter base64 para buffer
+      const documentBuffer = base64ToBuffer(input.documentBase64);
+
+      // Gerar filename se não fornecido
+      const extension = input.documentBase64.startsWith("data:application/pdf")
+        ? "pdf"
+        : input.documentBase64.startsWith("data:image/png")
+        ? "png"
+        : "jpg";
+
+      const filename =
+        input.filename ||
+        generateDocumentFilename(
+          user.instructor.id,
+          input.documentType,
+          extension
+        );
+
+      // Fazer upload do documento
+      const documentUrl = await uploadInstructorDocument(
+        user.instructor.id,
+        documentBuffer,
+        filename,
+        input.documentType
+      );
+
+      // Atualizar o campo correspondente no banco
+      const updateData =
+        input.documentType === "cnh"
+          ? { cnhDocument: documentUrl }
+          : { credentialDoc: documentUrl };
+
+      const instructor = await ctx.prisma.instructor.update({
+        where: { id: user.instructor.id },
+        data: updateData,
+      });
+
+      return { documentUrl, instructor };
+    }),
+
+  // Atualizar perfil do instrutor
+  update: instructorProcedure
+    .input(
+      z.object({
+        city: z.string().min(1).optional(),
+        state: z.string().length(2).toUpperCase().optional(),
+        basePrice: z
+          .number()
+          .positive()
+          .min(50)
+          .max(1000)
+          .optional(),
+        phone: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      if (!user?.instructor) {
+        throw new Error("Instructor profile not found");
+      }
+
+      const updateData: any = {};
+
+      if (input.city) updateData.city = input.city;
+      if (input.state) updateData.state = input.state;
+      if (input.basePrice !== undefined) updateData.basePrice = input.basePrice;
+
+      const instructor = await ctx.prisma.instructor.update({
+        where: { id: user.instructor.id },
+        data: updateData,
+      });
+
+      if (input.phone !== undefined) {
+        await ctx.prisma.user.update({
+          where: { id: user.id },
+          data: { phone: input.phone },
+        });
+      }
 
       return instructor;
     }),
@@ -379,6 +557,51 @@ export const instructorRouter = router({
 
       return instructor.user.vehicles;
     }),
+
+  // Criar conta Stripe Connect
+  createStripeAccount: instructorProcedure.mutation(async ({ ctx }) => {
+    const user = await ctx.prisma.user.findUnique({
+      where: { email: ctx.session.user.email! },
+      include: { instructor: true },
+    });
+
+    if (!user?.instructor) {
+      throw new Error("Instructor profile not found");
+    }
+
+    const account = await createConnectAccount(user.instructor.id);
+    return { accountId: account.id };
+  }),
+
+  // Obter link de onboarding do Stripe Connect
+  getStripeOnboardingLink: instructorProcedure.mutation(async ({ ctx }) => {
+    const user = await ctx.prisma.user.findUnique({
+      where: { email: ctx.session.user.email! },
+      include: { instructor: true },
+    });
+
+    if (!user?.instructor) {
+      throw new Error("Instructor profile not found");
+    }
+
+    const url = await createConnectOnboardingLink(user.instructor.id);
+    return { url };
+  }),
+
+  // Verificar status da conta Stripe Connect
+  checkStripeStatus: instructorProcedure.query(async ({ ctx }) => {
+    const user = await ctx.prisma.user.findUnique({
+      where: { email: ctx.session.user.email! },
+      include: { instructor: true },
+    });
+
+    if (!user?.instructor) {
+      throw new Error("Instructor profile not found");
+    }
+
+    const status = await checkConnectAccountStatus(user.instructor.id);
+    return status;
+  }),
 
   // Obter perfil do instrutor logado
   getMyProfile: instructorProcedure.query(async ({ ctx }) => {

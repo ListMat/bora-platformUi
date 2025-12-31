@@ -2,12 +2,17 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure, adminProcedure } from "../trpc";
 import { UserRole } from "@bora/db";
 import { getGamificationInfo } from "../modules/gamification";
+import {
+  uploadProfilePhoto,
+  base64ToBuffer,
+  generatePhotoFilename,
+} from "../modules/profilePhotoStorage";
 
 export const userRouter = router({
   // Obter usuário atual
   me: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.prisma.user.findUnique({
-      where: { email: ctx.session.user.email! },
+      where: { email: ctx.session!.user.email! },
       include: {
         student: true,
         instructor: true,
@@ -19,7 +24,7 @@ export const userRouter = router({
   // Obter informações de gamificação
   gamification: protectedProcedure.query(async ({ ctx }) => {
     const user = await ctx.prisma.user.findUnique({
-      where: { email: ctx.session.user.email! },
+      where: { email: ctx.session!.user.email! },
     });
 
     if (!user) {
@@ -76,6 +81,49 @@ export const userRouter = router({
         data: input,
       });
       return user;
+    }),
+
+  // Upload de foto de perfil
+  uploadProfilePhoto: protectedProcedure
+    .input(
+      z.object({
+        photoBase64: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+      });
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      // Converter base64 para buffer
+      const photoBuffer = base64ToBuffer(input.photoBase64);
+
+      // Detectar extensão da imagem
+      const extension = input.photoBase64.includes("image/png")
+        ? "png"
+        : input.photoBase64.includes("image/webp")
+          ? "webp"
+          : "jpg";
+
+      // Gerar filename único
+      const filename = generatePhotoFilename(user.id, extension);
+
+      // Upload para Supabase
+      const photoUrl = await uploadProfilePhoto(user.id, photoBuffer, filename);
+
+      // Atualizar URL da foto no banco
+      const updatedUser = await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { image: photoUrl },
+      });
+
+      return {
+        photoUrl: updatedUser.image,
+      };
     }),
 
   // Banir/desbanir usuário (admin)

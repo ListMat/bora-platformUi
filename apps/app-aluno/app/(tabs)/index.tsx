@@ -18,9 +18,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { trpc } from "@/lib/trpc";
 import { colors, radius, spacing, typography } from "@/theme";
-import ExpandMapModal from "@/components/ExpandMapModal";
-import Mapbox, { Camera, PointAnnotation } from "@rnmapbox/maps";
-import { DARK_MAP_STYLE } from "@/lib/mapbox";
+// TODO: Descomentar quando adicionar react-native-maps de volta
+// import ExpandMapModal from "@/components/ExpandMapModal";
+// TODO: Descomentar quando adicionar react-native-maps de volta
+// import MapView, { Marker } from "react-native-maps";
+// import { MAP_PROVIDER } from "@/lib/maps";
+import { useHaptic } from "@/hooks/useHaptic";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
 
@@ -40,12 +44,14 @@ const DEFAULT_LOCATION = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const haptic = useHaptic();
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number; zoomLevel?: number } | null>(null);
   const [selectedInstructor, setSelectedInstructor] = useState<string | null>(null);
   const [filters, setFilters] = useState(FILTER_OPTIONS);
   const [isMapExpanded, setIsMapExpanded] = useState(false);
-  const mapRef = useRef<Mapbox.MapView>(null);
-  const homeMapRef = useRef<Mapbox.MapView>(null);
+  const [lastLessonConfig, setLastLessonConfig] = useState<any>(null);
+  const mapRef = useRef<any>(null); // TODO: MapView quando adicionar mapas
+  const homeMapRef = useRef<any>(null); // TODO: MapView quando adicionar mapas
   const cardAnimation = useRef(new Animated.Value(height)).current;
 
   // Localização para exibir no mapa (usa a do usuário ou padrão)
@@ -72,6 +78,20 @@ export default function HomeScreen() {
         setUserLocation(location);
       } catch (error) {
         console.error("Error getting location:", error);
+      }
+    })();
+  }, []);
+
+  // Carregar última configuração de aula
+  useEffect(() => {
+    (async () => {
+      try {
+        const config = await AsyncStorage.getItem('last_lesson_config');
+        if (config) {
+          setLastLessonConfig(JSON.parse(config));
+        }
+      } catch (error) {
+        console.error("Error loading last config:", error);
       }
     })();
   }, []);
@@ -110,14 +130,15 @@ export default function HomeScreen() {
 
   const handleMarkerPress = (instructorId: string) => {
     setSelectedInstructor(instructorId);
-    
+
     const instructor = instructors.find((i) => i.id === instructorId);
     if (instructor && instructor.latitude && instructor.longitude && mapRef.current) {
-      mapRef.current.setCamera({
-        centerCoordinate: [instructor.longitude, instructor.latitude],
-        zoomLevel: 14,
-        animationDuration: 500,
-      });
+      mapRef.current.animateToRegion({
+        latitude: instructor.latitude,
+        longitude: instructor.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 500);
     }
   };
 
@@ -141,7 +162,10 @@ export default function HomeScreen() {
     return (
       <TouchableOpacity
         style={[styles.instructorCard, isSelected && styles.instructorCardSelected]}
-        onPress={() => handleMarkerPress(item.id)}
+        onPress={() => {
+          haptic.light();
+          handleMarkerPress(item.id);
+        }}
         activeOpacity={0.8}
       >
         {item.user.image ? (
@@ -192,85 +216,107 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      
+
       {/* Mapa - sempre visível */}
       <View style={styles.mapContainer}>
-        <Mapbox.MapView
+        {/* TODO: Descomentar quando adicionar react-native-maps de volta */}
+        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }]}>
+          <Text style={{ color: colors.textSecondary, textAlign: 'center', padding: 20 }}>
+            Mapa temporariamente desabilitado{'\n'}
+            {instructors.length} instrutores disponíveis
+          </Text>
+        </View>
+        {/* 
+        <MapView
           ref={homeMapRef}
           style={styles.map}
-          styleURL={DARK_MAP_STYLE}
-          logoEnabled={false}
-          attributionEnabled={false}
+          provider={MAP_PROVIDER}
+          initialRegion={{
+            latitude: mapLocation.latitude,
+            longitude: mapLocation.longitude,
+            latitudeDelta: mapLocation.zoomLevel ? (20 - mapLocation.zoomLevel) * 0.01 : 0.05,
+            longitudeDelta: mapLocation.zoomLevel ? (20 - mapLocation.zoomLevel) * 0.01 : 0.05,
+          }}
+          showsUserLocation={false}
+          showsMyLocationButton={false}
+          toolbarEnabled={false}
         >
-          <Camera
-            defaultSettings={{
-              centerCoordinate: [mapLocation.longitude, mapLocation.latitude],
-              zoomLevel: mapLocation.zoomLevel || 12,
-            }}
-          />
-          
-          {/* Marcador da localização do usuário - só aparece se tiver localização real */}
           {userLocation && (
-            <Mapbox.PointAnnotation
-              id="user-location"
-              coordinate={[userLocation.longitude, userLocation.latitude]}
+            <Marker
+              coordinate={{
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              }}
+              identifier="user-location"
             >
               <View style={styles.userLocationMarker}>
                 <View style={styles.userLocationDot} />
               </View>
-            </Mapbox.PointAnnotation>
+            </Marker>
           )}
 
-            {/* Marcadores dos instrutores */}
-            {instructors.map((instructor) => {
-              if (!instructor.latitude || !instructor.longitude) return null;
-              
-              const isSelected = selectedInstructor === instructor.id;
-              
-              return (
-                <Mapbox.PointAnnotation
-                  key={instructor.id}
-                  id={`instructor-${instructor.id}`}
-                  coordinate={[instructor.longitude, instructor.latitude]}
-                  onSelected={() => handleMarkerPress(instructor.id)}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleMarkerPress(instructor.id)}
-                    activeOpacity={0.8}
-                  >
-                    <View
-                      style={[
-                        styles.markerContainer,
-                        isSelected && styles.markerContainerSelected,
-                      ]}
-                    >
-                      <View style={styles.markerContent}>
-                        <Ionicons name="star" size={16} color="#FFD700" />
-                        <Text style={styles.markerRating}>
-                          {instructor.averageRating?.toFixed(1) || "0.0"} ({instructor.totalLessons || 0})
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                </Mapbox.PointAnnotation>
-              );
-            })}
-          </Mapbox.MapView>
+          {instructors.map((instructor) => {
+            if (!instructor.latitude || !instructor.longitude) return null;
 
-          {/* Botão expandir mapa */}
-          <TouchableOpacity
-            style={styles.expandMapButton}
-            onPress={() => setIsMapExpanded(true)}
-            accessibilityLabel="Expandir mapa"
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name="expand"
-              size={24}
-              color={colors.text.primary}
-            />
-          </TouchableOpacity>
-        </View>
+            const isSelected = selectedInstructor === instructor.id;
+
+            return (
+              <Marker
+                key={instructor.id}
+                identifier={`instructor-${instructor.id}`}
+                coordinate={{
+                  latitude: instructor.latitude,
+                  longitude: instructor.longitude,
+                }}
+                onPress={() => {
+                  haptic.light();
+                  handleMarkerPress(instructor.id);
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    haptic.light();
+                    handleMarkerPress(instructor.id);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.markerContainer,
+                      isSelected && styles.markerContainerSelected,
+                    ]}
+                  >
+                    <View style={styles.markerContent}>
+                      <Ionicons name="star" size={16} color="#FFD700" />
+                      <Text style={styles.markerRating}>
+                        {instructor.averageRating?.toFixed(1) || "0.0"} ({instructor.totalLessons || 0})
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Marker>
+            );
+          })}
+        </MapView>
+        */}
+
+        {/* Botão expandir mapa */}
+        <TouchableOpacity
+          style={styles.expandMapButton}
+          onPress={() => {
+            haptic.light();
+            setIsMapExpanded(true);
+          }}
+          accessibilityLabel="Expandir mapa"
+          accessibilityRole="button"
+        >
+          <Ionicons
+            name="expand"
+            size={24}
+            color={colors.text.primary}
+          />
+        </TouchableOpacity>
+      </View>
 
       {/* Header com busca e saudação */}
       <View style={styles.header}>
@@ -283,12 +329,49 @@ export default function HomeScreen() {
             editable={false}
           />
         </View>
-        
+
         <Text style={styles.greeting}>
           Olá, {user?.name?.split(" ")[0] || "Usuário"} 👋
         </Text>
-        
+
         <Text style={styles.prompt}>Onde você quer começar?</Text>
+
+        {/* Botão "Aula em 1 clique" */}
+        {lastLessonConfig && (
+          <TouchableOpacity
+            style={styles.quickBookCard}
+            onPress={() => {
+              haptic.medium();
+              router.push({
+                pathname: "/screens/SolicitarAulaFlow",
+                params: { quickBook: "true" },
+              });
+            }}
+          >
+            <View style={styles.quickBookHeader}>
+              <Ionicons name="flash" size={24} color={colors.background.brandPrimary} />
+              <Text style={styles.quickBookTitle}>Aula em 1 clique</Text>
+            </View>
+            <View style={styles.quickBookDetails}>
+              <View style={styles.quickBookDetail}>
+                <Ionicons name="time-outline" size={16} color={colors.text.secondary} />
+                <Text style={styles.quickBookDetailText}>
+                  {lastLessonConfig.time} · {lastLessonConfig.lessonType}
+                </Text>
+              </View>
+              <View style={styles.quickBookDetail}>
+                <Ionicons name="cash-outline" size={16} color={colors.text.secondary} />
+                <Text style={styles.quickBookDetailText}>
+                  R$ {lastLessonConfig.price} · {lastLessonConfig.paymentMethod}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.quickBookButton}>
+              <Text style={styles.quickBookButtonText}>CONFIRMAR AGORA</Text>
+              <Ionicons name="arrow-forward" size={20} color={colors.text.white} />
+            </View>
+          </TouchableOpacity>
+        )}
 
         {/* Filtros */}
         <ScrollView
@@ -303,7 +386,10 @@ export default function HomeScreen() {
                 styles.filterChip,
                 filter.active && styles.filterChipActive,
               ]}
-              onPress={() => handleFilterPress(filter.id)}
+              onPress={() => {
+                haptic.light();
+                handleFilterPress(filter.id);
+              }}
             >
               <Text
                 style={[
@@ -414,7 +500,10 @@ export default function HomeScreen() {
             </Text>
             <TouchableOpacity
               style={styles.emptyStateButton}
-              onPress={() => router.push("/search")}
+              onPress={() => {
+                haptic.medium();
+                router.push("/search");
+              }}
             >
               <Text style={styles.emptyStateButtonText}>Buscar instrutores</Text>
             </TouchableOpacity>
@@ -442,6 +531,7 @@ export default function HomeScreen() {
       </Animated.View>
 
       {/* Modal de mapa expandido */}
+      {/* TODO: Descomentar quando adicionar mapas de volta
       <ExpandMapModal
         visible={isMapExpanded}
         instructors={instructors}
@@ -453,6 +543,7 @@ export default function HomeScreen() {
         }}
         onClose={() => setIsMapExpanded(false)}
       />
+      */}
     </View>
   );
 }
@@ -544,6 +635,52 @@ const styles = StyleSheet.create({
   },
   filterChipTextActive: {
     color: colors.text.primary,
+  },
+  quickBookCard: {
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.xl,
+    padding: spacing.xl,
+    marginBottom: spacing.lg,
+    borderWidth: 2,
+    borderColor: colors.background.brandPrimary,
+  },
+  quickBookHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  quickBookTitle: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.primary,
+  },
+  quickBookDetails: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  quickBookDetail: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  quickBookDetailText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+  },
+  quickBookButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background.brandPrimary,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    gap: spacing.sm,
+  },
+  quickBookButtonText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.white,
   },
   selectedInstructorCard: {
     position: "absolute",

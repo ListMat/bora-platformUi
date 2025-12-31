@@ -2,7 +2,8 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } fr
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect, useRef } from "react";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+// TODO: Descomentar quando adicionar react-native-maps de volta
+// import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 
 export default function LessonLiveScreen() {
@@ -148,6 +149,17 @@ export default function LessonLiveScreen() {
   return (
     <View style={styles.container}>
       {/* Mapa */}
+      {/* Mapa */}
+      {/* TODO: Descomentar quando adicionar react-native-maps de volta */}
+      {instructorLocation && (
+        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' }]}>
+          <Text style={{ color: '#666', textAlign: 'center', padding: 20 }}>
+            Mapa temporariamente desabilitado (Web){'\n'}
+            Aula em andamento
+          </Text>
+        </View>
+      )}
+      {/* 
       {instructorLocation && (
         <MapView
           style={styles.map}
@@ -159,14 +171,12 @@ export default function LessonLiveScreen() {
             longitudeDelta: 0.02,
           }}
         >
-          {/* Marcador do instrutor */}
           <Marker
             coordinate={instructorLocation}
             title="Você"
             pinColor="#FF6D00"
           />
 
-          {/* Marcador do aluno/pickup */}
           {studentLocation && (
             <Marker
               coordinate={studentLocation}
@@ -177,6 +187,7 @@ export default function LessonLiveScreen() {
           )}
         </MapView>
       )}
+      */}
 
       {/* Info Card */}
       <View style={styles.infoCard}>
@@ -202,8 +213,8 @@ export default function LessonLiveScreen() {
         <View style={styles.actions}>
           {lesson.status === "SCHEDULED" && (
             <>
-              <TouchableOpacity 
-                style={[styles.button, styles.primaryButton]} 
+              <TouchableOpacity
+                style={[styles.button, styles.primaryButton]}
                 onPress={handleStart}
                 disabled={startMutation.isLoading}
               >
@@ -211,8 +222,8 @@ export default function LessonLiveScreen() {
                   {startMutation.isLoading ? "Iniciando..." : "Iniciar Aula"}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.button, styles.cancelButton]} 
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton]}
                 onPress={handleCancel}
                 disabled={cancelMutation.isLoading}
               >
@@ -222,8 +233,8 @@ export default function LessonLiveScreen() {
           )}
 
           {lesson.status === "ACTIVE" && (
-            <TouchableOpacity 
-              style={[styles.button, styles.primaryButton]} 
+            <TouchableOpacity
+              style={[styles.button, styles.primaryButton]}
               onPress={handleEnd}
               disabled={endMutation.isLoading}
             >
@@ -234,7 +245,7 @@ export default function LessonLiveScreen() {
           )}
 
           {lesson.status === "FINISHED" && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.button, styles.primaryButton]}
               onPress={() => router.push(`/screens/rating?lessonId=${id}`)}
             >

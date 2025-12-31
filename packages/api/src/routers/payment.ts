@@ -5,7 +5,7 @@ import Stripe from "stripe";
 import { checkRateLimit, RATE_LIMITS, RateLimitError } from "../modules/rateLimiter";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-12-18.acacia",
+  apiVersion: "2023-10-16",
 });
 
 export const paymentRouter = router({
@@ -21,7 +21,7 @@ export const paymentRouter = router({
     .mutation(async ({ ctx, input }) => {
       // Rate limiting
       const rateLimitResult = await checkRateLimit(
-        `payment:${ctx.session.user.email}`,
+        `payment:${ctx.session!.user.email}`,
         RATE_LIMITS.PAYMENT
       );
 
@@ -30,7 +30,7 @@ export const paymentRouter = router({
       }
 
       const user = await ctx.prisma.user.findUnique({
-        where: { email: ctx.session.user.email! },
+        where: { email: ctx.session!.user.email! },
         include: { student: true },
       });
 
@@ -81,7 +81,7 @@ export const paymentRouter = router({
           },
         });
         customerId = customer.id;
-        
+
         await ctx.prisma.payment.update({
           where: { id: payment.id },
           data: { stripeCustomerId: customerId },
@@ -114,6 +114,91 @@ export const paymentRouter = router({
       return {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
+      };
+    }),
+
+  // Criar Checkout Session do Stripe (para WebView)
+  createCheckoutSession: protectedProcedure
+    .input(
+      z.object({
+        paymentId: z.string(),
+        successUrl: z.string().optional(),
+        cancelUrl: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const payment = await ctx.prisma.payment.findUnique({
+        where: { id: input.paymentId },
+        include: {
+          student: { include: { user: true } },
+          lesson: true,
+        },
+      });
+
+      if (!payment) {
+        throw new Error("Payment not found");
+      }
+
+      // Criar ou recuperar customer do Stripe
+      let customerId = payment.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: payment.student.user.email,
+          name: payment.student.user.name || undefined,
+          metadata: {
+            studentId: payment.studentId,
+          },
+        });
+        customerId = customer.id;
+
+        await ctx.prisma.payment.update({
+          where: { id: payment.id },
+          data: { stripeCustomerId: customerId },
+        });
+      }
+
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+      const successUrl = input.successUrl || `${baseUrl}/payment/success?paymentId=${payment.id}`;
+      const cancelUrl = input.cancelUrl || `${baseUrl}/payment/cancel?paymentId=${payment.id}`;
+
+      // Criar Checkout Session
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "brl",
+              product_data: {
+                name: `Aula de Direção - ${payment.lesson?.pickupAddress || "Aula"}`,
+                description: `Pagamento para aula agendada`,
+              },
+              unit_amount: Math.round(Number(payment.amount) * 100), // Centavos
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata: {
+          paymentId: payment.id,
+          lessonId: payment.lessonId || "",
+        },
+      });
+
+      // Atualizar payment com Stripe Session ID
+      await ctx.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          stripePaymentId: session.id,
+          status: PaymentStatus.PROCESSING,
+        },
+      });
+
+      return {
+        sessionId: session.id,
+        url: session.url,
       };
     }),
 
@@ -158,7 +243,7 @@ export const paymentRouter = router({
 
       // Buscar o PaymentIntent atualizado com dados do PIX
       const confirmedIntent = await stripe.paymentIntents.retrieve(paymentIntent.id);
-      
+
       // @ts-ignore - PIX data structure
       const pixData = confirmedIntent.next_action?.pix_display_qr_code;
 
@@ -497,7 +582,7 @@ export const paymentRouter = router({
         // const mpData = await mpResponse.json();
         // pixCode = mpData.point_of_interaction.transaction_data.qr_code;
         // qrCodeUrl = mpData.point_of_interaction.transaction_data.qr_code_base64;
-        
+
         // Mock por enquanto
         pixCode = `00020126580014BR.GOV.BCB.PIX0136${Math.random().toString(36).substring(7)}5204000053039865802BR5925BORA AUTOESCOLA LTDA6009SAO PAULO62070503***6304${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         qrCodeUrl = "";
@@ -522,21 +607,21 @@ export const paymentRouter = router({
       // Criar ou atualizar pagamento
       const payment = existingPayment
         ? await ctx.prisma.payment.update({
-            where: { id: existingPayment.id },
-            data: {
-              amount: input.amount,
-              method: PaymentMethod.PIX,
-              status: PaymentStatus.PENDING,
-            },
-          })
+          where: { id: existingPayment.id },
+          data: {
+            amount: input.amount,
+            method: PaymentMethod.PIX,
+            status: PaymentStatus.PENDING,
+          },
+        })
         : await ctx.prisma.payment.create({
-            data: {
-              lessonId: input.lessonId,
-              amount: input.amount,
-              method: PaymentMethod.PIX,
-              status: PaymentStatus.PENDING,
-            },
-          });
+          data: {
+            lessonId: input.lessonId,
+            amount: input.amount,
+            method: PaymentMethod.PIX,
+            status: PaymentStatus.PENDING,
+          },
+        });
 
       // Salvar código Pix no pagamento
       await ctx.prisma.payment.update({
