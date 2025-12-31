@@ -4,25 +4,11 @@ import { Button } from "@/components/ui/button";
 import { useListContext, useTranslate } from "ra-core";
 import matches from "lodash/matches";
 import pickBy from "lodash/pickBy";
-import { CircleX } from "lucide-react";
+import { X } from "lucide-react";
 
 /**
  * A button that toggles a specific filter value on/off.
- *
- * Renders a button that applies or removes a filter when clicked. Shows a close icon when the
- * filter is active. Useful for quick filter presets like status or category.
- *
- * @see {@link https://marmelab.com/shadcn-admin-kit/docs/togglefilterbutton/ ToggleFilterButton documentation}
- *
- * @example
- * import { ToggleFilterButton } from '@/components/admin';
- *
- * const PostFilters = () => (
- *   <div className="flex flex-row gap-2">
- *     <ToggleFilterButton label="Published" value={{ status: 'published' }} />
- *     <ToggleFilterButton label="Draft" value={{ status: 'draft' }} />
- *   </div>
- * );
+ * ...
  */
 export const ToggleFilterButton = ({
   label,
@@ -51,7 +37,7 @@ export const ToggleFilterButton = ({
       size={size}
     >
       {typeof label === "string" ? translate(label, { _: label }) : label}
-      {isSelected && <CircleX className="opacity-50" />}
+      {isSelected && <X className="opacity-50" />}
     </Button>
   );
 };
