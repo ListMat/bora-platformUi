@@ -8,6 +8,7 @@ import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme, Platform } from "react-native";
 import { useNotifications } from "@/hooks/useNotifications";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function RootLayout() {
   // Detectar tema do sistema
@@ -46,32 +47,34 @@ export default function RootLayout() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen
-            name="screens/SolicitarAulaFlow"
-            options={{
-              title: "Solicitar Aula",
-              presentation: "fullScreenModal",
-            }}
-          />
-          <Stack.Screen
-            name="screens/onboarding/OnboardingFlow"
-            options={{
-              title: "Complete seu Cadastro",
-              presentation: "fullScreenModal",
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen
-            name="screens/editProfile"
-            options={{
-              title: "Editar Perfil",
-              presentation: "card",
-            }}
-          />
-        </Stack>
+        <AuthProvider>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="screens/SolicitarAulaFlow"
+              options={{
+                title: "Solicitar Aula",
+                presentation: "fullScreenModal",
+              }}
+            />
+            <Stack.Screen
+              name="screens/onboarding/OnboardingFlow"
+              options={{
+                title: "Complete seu Cadastro",
+                presentation: "fullScreenModal",
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="screens/editProfile"
+              options={{
+                title: "Editar Perfil",
+                presentation: "card",
+              }}
+            />
+          </Stack>
+        </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>
   );

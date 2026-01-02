@@ -23,10 +23,12 @@ enum UserRole {
 }
 
 enum LessonStatus {
-  SCHEDULED
-  ACTIVE
-  FINISHED
-  CANCELLED
+  PENDING    // Aguardando resposta do instrutor
+  SCHEDULED  // Aceita pelo instrutor
+  ACTIVE     // Em andamento
+  FINISHED   // Concluída
+  CANCELLED  // Cancelada
+  EXPIRED    // Expirou (sem resposta em 2 min)
 }
 
 enum PaymentStatus {
@@ -38,9 +40,12 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
-  CREDIT_CARD
   PIX
-  BOLETO
+  DINHEIRO
+  DEBITO
+  CREDITO
+  CREDIT_CARD  // Manter compatibilidade
+  BOLETO       // Manter compatibilidade
 }
 
 enum DisputeStatus {
@@ -94,6 +99,9 @@ model User {
   image         String?
   phone         String?
   role          UserRole  @default(STUDENT)
+  
+  // Push notifications
+  pushToken     String?   // Expo push token
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -208,6 +216,11 @@ model Instructor {
   // Preço e disponibilidade
   basePrice         Decimal  @default(0) @db.Decimal(10, 2)
   isAvailable       Boolean  @default(false)
+  isOnline          Boolean  @default(false) // Toggle online/offline
+  acceptsOwnVehicle Boolean  @default(false) // Aceita carro do aluno
+  
+  // Bio curta (máx 200 caracteres)
+  bio               String?
   
   // Status e métricas
   status            InstructorStatus @default(PENDING_VERIFICATION)
@@ -259,6 +272,16 @@ model Lesson {
   endedAt          DateTime?
   duration         Int?         // minutos
   
+  // Tipo de aula e configurações
+  lessonType       String?      // "1ª Habilitação", "Direção via pública", etc.
+  vehicleId        String?      // ID do veículo (instrutor ou aluno)
+  useOwnVehicle    Boolean      @default(false)
+  planId           String?      // ID do plano (1, 5, 10 aulas)
+  
+  // Pagamento
+  paymentMethod    PaymentMethod @default(PIX)
+  installments     Int          @default(1)
+  
   // Localização
   pickupLatitude   Float?
   pickupLongitude  Float?
@@ -269,7 +292,7 @@ model Lesson {
   currentLongitude Float?
   
   // Status e preço
-  status           LessonStatus @default(SCHEDULED)
+  status           LessonStatus @default(PENDING)
   price            Decimal      @db.Decimal(10, 2)
   
   // Bundle payment
@@ -282,6 +305,14 @@ model Lesson {
   
   // Recibo (obrigatório)
   receiptUrl       String?
+  
+  // Pix (geração e confirmação)
+  pixCode          String?   // Código Pix copia e cola
+  pixQrCode        String?   // QR Code em base64
+  pixGeneratedAt   DateTime? // Quando foi gerado
+  pixExpiresAt     DateTime? // Quando expira (30 min)
+  pixPaidAt        DateTime? // Quando foi pago
+  paymentStatus    String    @default("PENDING") // PENDING, PAID, EXPIRED
   
   // Notas
   instructorNotes  String?
@@ -416,6 +447,27 @@ model ActivityLog {
 }
 
 // ==================== NOVOS MODELOS - FASE 1 ====================
+
+model Plan {
+  id          String   @id @default(cuid())
+  name        String   // "1 Aula", "Pacote 5 Aulas", "Pacote 10 Aulas"
+  description String?
+  
+  // Configuração
+  lessons     Int      // 1, 5, 10
+  price       Decimal  @db.Decimal(10, 2)
+  discount    Int      @default(0) // % desconto
+  
+  // Status
+  isActive    Boolean  @default(true)
+  featured    Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, featured])
+  @@map("plans")
+}
 
 model Bundle {
   id          String   @id @default(cuid())

@@ -544,6 +544,24 @@ export default function HomeScreen() {
         onClose={() => setIsMapExpanded(false)}
       />
       */}
+
+      {/* Floating Action Button - Solicitar Aula */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => {
+          haptic.medium();
+          router.push({
+            pathname: "/screens/SolicitarAulaFlow",
+            params: { instructorId: selectedInstructor || undefined },
+          });
+        }}
+        activeOpacity={0.9}
+      >
+        <View style={styles.fabContent}>
+          <Ionicons name="add" size={28} color={colors.text.white} />
+          <Text style={styles.fabText}>Solicitar Aula</Text>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -969,5 +987,30 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     fontSize: typography.fontSize.base,
     color: colors.text.secondary,
+  },
+  fab: {
+    position: "absolute",
+    bottom: spacing["6xl"],
+    right: spacing.xl,
+    backgroundColor: colors.background.brandPrimary,
+    borderRadius: radius.full,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing["2xl"],
+    zIndex: 100,
+    shadowColor: colors.background.brandPrimary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  fabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  fabText: {
+    fontSize: typography.fontSize.base,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.white,
   },
 });

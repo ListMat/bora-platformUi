@@ -373,6 +373,7 @@ export const lessonRouter = router({
         useOwnVehicle: z.boolean().default(false),
         planId: z.string().optional(), // ID do plano/pacote
         paymentMethod: z.enum(["PIX", "DINHEIRO", "DEBITO", "CREDITO"]),
+        installments: z.number().int().min(1).max(3).default(1),
         pickupLatitude: z.number().optional(),
         pickupLongitude: z.number().optional(),
         pickupAddress: z.string().optional(),
@@ -399,6 +400,28 @@ export const lessonRouter = router({
         throw new Error("Instructor not available");
       }
 
+      // Validar horário (mínimo 2h no futuro)
+      const now = new Date();
+      const twoHoursFromNow = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+      if (input.scheduledAt < twoHoursFromNow) {
+        throw new Error("A aula deve ser agendada com pelo menos 2 horas de antecedência");
+      }
+
+      // Verificar se o horário já está ocupado
+      const existingLesson = await ctx.prisma.lesson.findFirst({
+        where: {
+          instructorId: input.instructorId,
+          scheduledAt: input.scheduledAt,
+          status: {
+            in: ["PENDING", "SCHEDULED", "ACTIVE"],
+          },
+        },
+      });
+
+      if (existingLesson) {
+        throw new Error("Horário já está ocupado");
+      }
+
       // Criar aula com status PENDING (aguardando aprovação do instrutor)
       const lesson = await ctx.prisma.lesson.create({
         data: {
@@ -409,8 +432,13 @@ export const lessonRouter = router({
           pickupLongitude: input.pickupLongitude,
           pickupAddress: input.pickupAddress,
           price: input.price,
-          status: LessonStatus.SCHEDULED,
-          // Metadata adicional pode ser armazenado em um campo JSON
+          status: "PENDING", // Aguardando resposta do instrutor
+          lessonType: input.lessonType,
+          vehicleId: input.vehicleId,
+          useOwnVehicle: input.useOwnVehicle,
+          planId: input.planId,
+          paymentMethod: input.paymentMethod,
+          installments: input.installments,
         },
         include: {
           instructor: {
@@ -426,31 +454,74 @@ export const lessonRouter = router({
         },
       });
 
-      // Criar mensagem inicial no chat
-      const lessonTypeLabel = input.lessonType;
+      // Criar mensagem inicial formatada
       const paymentMethodLabel = {
         PIX: "Pix",
         DINHEIRO: "Dinheiro",
-        DEBITO: "Cartão de débito",
-        CREDITO: "Cartão de crédito",
+        DEBITO: "Débito",
+        CREDITO: "Crédito",
       }[input.paymentMethod];
 
-      const initialMessage = `Solicitação de ${user.name || "Aluno"}
-${new Date(input.scheduledAt).toLocaleDateString("pt-BR", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  hour: "2-digit",
-  minute: "2-digit",
-})} – ${lessonTypeLabel} – R$ ${input.price.toFixed(2)} (${paymentMethodLabel} ao final)`;
+      const dateStr = new Date(input.scheduledAt).toLocaleDateString("pt-BR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
 
-      // Enviar mensagem inicial via chat router
-      try {
-        const { chatRouter } = await import("./chat");
-        // A mensagem será enviada pelo frontend após redirecionamento
-      } catch (error) {
-        console.error("Error importing chat router:", error);
-      }
+      const timeStr = new Date(input.scheduledAt).toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const vehicleStr = input.useOwnVehicle ? "Carro próprio" : "Carro da autoescola";
+
+      const initialMessage = `Solicitação de ${user.name || "Aluno"}
+${dateStr} às ${timeStr}
+${input.lessonType} – ${vehicleStr}
+R$ ${input.price.toFixed(2)} (${paymentMethodLabel} ao final)`;
+
+      // Implementar timer de 2 minutos para expiração
+      // Nota: Em produção, usar um job queue (Bull, BullMQ) ou cron job
+      setTimeout(async () => {
+        try {
+          const currentLesson = await ctx.prisma.lesson.findUnique({
+            where: { id: lesson.id },
+            include: {
+              student: { include: { user: true } },
+            },
+          });
+
+          if (currentLesson?.status === "PENDING") {
+            await ctx.prisma.lesson.update({
+              where: { id: lesson.id },
+              data: { status: "EXPIRED" },
+            });
+
+            // Enviar notificação push para o aluno
+            const { notifyStudentLessonExpired } = await import("../modules/pushNotifications");
+            await notifyStudentLessonExpired({
+              studentUserId: currentLesson.student.userId,
+              lessonId: lesson.id,
+            });
+
+            console.log(`Lesson ${lesson.id} expired - instructor did not respond in time`);
+          }
+        } catch (error) {
+          console.error("Error expiring lesson:", error);
+        }
+      }, 2 * 60 * 1000); // 2 minutos
+
+      // Enviar notificação push para o instrutor
+      const { notifyInstructorNewRequest } = await import("../modules/pushNotifications");
+      await notifyInstructorNewRequest({
+        instructorUserId: instructor.userId,
+        studentName: user.name || "Aluno",
+        lessonId: lesson.id,
+        scheduledAt: input.scheduledAt,
+      });
+
+      console.log(`New lesson request from ${user.name} to instructor ${instructor.user.name}`);
+
 
       return {
         lesson,
@@ -527,15 +598,15 @@ ${new Date(input.scheduledAt).toLocaleDateString("pt-BR", {
         throw new Error("Lesson not found or unauthorized");
       }
 
-      if (lesson.status !== "SCHEDULED") {
+      if (lesson.status !== "PENDING") {
         throw new Error("Lesson already processed");
       }
 
-      // Atualizar status da aula
+      // Atualizar status da aula para SCHEDULED
       const updatedLesson = await ctx.prisma.lesson.update({
         where: { id: input.lessonId },
         data: {
-          status: LessonStatus.SCHEDULED,
+          status: "SCHEDULED", // Aceita pelo instrutor
         },
         include: {
           student: {
@@ -544,6 +615,15 @@ ${new Date(input.scheduledAt).toLocaleDateString("pt-BR", {
             },
           },
         },
+      });
+
+      // Enviar notificação push para o aluno
+      const { notifyStudentLessonAccepted } = await import("../modules/pushNotifications");
+      await notifyStudentLessonAccepted({
+        studentUserId: updatedLesson.student.userId,
+        instructorName: user.name || "Instrutor",
+        lessonId: updatedLesson.id,
+        scheduledAt: updatedLesson.scheduledAt,
       });
 
       return updatedLesson;
@@ -569,6 +649,13 @@ ${new Date(input.scheduledAt).toLocaleDateString("pt-BR", {
 
       const lesson = await ctx.prisma.lesson.findUnique({
         where: { id: input.lessonId },
+        include: {
+          student: {
+            include: {
+              user: true,
+            },
+          },
+        },
       });
 
       if (!lesson || lesson.instructorId !== user.instructor.id) {
@@ -581,6 +668,15 @@ ${new Date(input.scheduledAt).toLocaleDateString("pt-BR", {
         data: {
           status: LessonStatus.CANCELLED,
         },
+      });
+
+      // Enviar notificação push para o aluno
+      const { notifyStudentLessonRejected } = await import("../modules/pushNotifications");
+      await notifyStudentLessonRejected({
+        studentUserId: lesson.student.userId,
+        instructorName: user.name || "Instrutor",
+        lessonId: updatedLesson.id,
+        reason: input.reason,
       });
 
       return updatedLesson;

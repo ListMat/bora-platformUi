@@ -44,15 +44,15 @@ export function CPFInput({
         value={formatCPF(value)}
         onChangeText={(text) => {
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'CPFInput.tsx:onChangeText',message:'CPF input changed',data:{text,textLength:text.length,formatted:formatCPF(text)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CPFInput.tsx:onChangeText', message: 'CPF input changed', data: { text, textLength: text.length, formatted: formatCPF(text) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
           // #endregion
+          // Remover tudo que não é número
           const numbers = text.replace(/\D/g, "");
-          if (numbers.length <= 11) {
-            onChangeText(numbers);
-          }
+          // Permitir até 11 dígitos (CPF completo)
+          onChangeText(numbers.slice(0, 11));
         }}
         keyboardType="numeric"
-        maxLength={14}
+        maxLength={14} // 000.000.000-00 (14 caracteres com formatação)
       />
       {error && <Text style={styles.error}>{error}</Text>}
     </View>

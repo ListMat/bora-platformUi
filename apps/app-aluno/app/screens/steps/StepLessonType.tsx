@@ -1,16 +1,12 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, spacing, radius, typography } from "@/theme";
 
 interface StepLessonTypeProps {
-  formData: any;
-  updateFormData: (updates: any) => void;
+  formData: {
+    lessonType: string;
+  };
+  updateFormData: (data: any) => void;
   instructorId: string;
   onNext: () => void;
 }
@@ -20,86 +16,100 @@ const LESSON_TYPES = [
     id: "1ª Habilitação",
     title: "1ª Habilitação",
     subtitle: "Primeiros comandos + ré",
-    icon: "school",
-    badge: "🎓",
+    icon: "🎓",
+    hasDualPedal: true,
   },
   {
     id: "Direção via pública",
     title: "Direção via pública",
     subtitle: "Avenidas e retornos",
-    icon: "road",
-    badge: "🛣️",
+    icon: "🛣️",
+    hasDualPedal: false,
   },
   {
     id: "Baliza / Manobras",
     title: "Baliza / Manobras",
     subtitle: "Estacionamento e ré em L",
-    icon: "car-sport",
-    badge: "🅿️",
+    icon: "🅿️",
+    hasDualPedal: true,
   },
   {
     id: "Aula Noturna",
     title: "Aula Noturna",
     subtitle: "Treino noturno",
-    icon: "moon",
-    badge: "🌙",
+    icon: "🌙",
+    hasDualPedal: false,
   },
   {
     id: "Simulado de Prova",
     title: "Simulado de Prova",
     subtitle: "Percurso oficial",
-    icon: "document-text",
-    badge: "📝",
+    icon: "📝",
+    hasDualPedal: true,
   },
 ];
 
-export default function StepLessonType({
-  formData,
-  updateFormData,
-  instructorId,
-  onNext,
-}: StepLessonTypeProps) {
-  const selectedType = formData.lessonType || "1ª Habilitação";
-
-  const handleSelect = (type: string) => {
-    updateFormData({ lessonType: type });
-  };
-
-  const renderType = ({ item }: { item: typeof LESSON_TYPES[0] }) => {
-    const isSelected = selectedType === item.id;
-    return (
-      <TouchableOpacity
-        style={[styles.typeCard, isSelected && styles.typeCardSelected]}
-        onPress={() => handleSelect(item.id)}
-      >
-        <View style={styles.typeHeader}>
-          <Text style={styles.typeBadge}>{item.badge}</Text>
-          {isSelected && (
-            <Ionicons name="checkmark-circle" size={24} color={colors.background.brandPrimary} />
-          )}
-        </View>
-        <Text style={[styles.typeTitle, isSelected && styles.typeTitleSelected]}>
-          {item.title}
-        </Text>
-        <Text style={[styles.typeSubtitle, isSelected && styles.typeSubtitleSelected]}>
-          {item.subtitle}
-        </Text>
-      </TouchableOpacity>
-    );
+export default function StepLessonType({ formData, updateFormData, instructorId, onNext }: StepLessonTypeProps) {
+  const handleSelect = (lessonType: string) => {
+    updateFormData({ lessonType });
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tipo de aula</Text>
-      <Text style={styles.subtitle}>Escolha o tipo de aula que você precisa</Text>
+      <Text style={styles.title}>Tipo de Aula</Text>
+      <Text style={styles.subtitle}>Escolha o foco da sua aula</Text>
 
-      <FlatList
-        data={LESSON_TYPES}
-        keyExtractor={(item) => item.id}
-        renderItem={renderType}
-        contentContainerStyle={styles.typesList}
-        showsVerticalScrollIndicator={false}
-      />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.cardsScroll}
+      >
+        {LESSON_TYPES.map((type) => {
+          const isSelected = formData.lessonType === type.id;
+
+          return (
+            <TouchableOpacity
+              key={type.id}
+              style={[
+                styles.card,
+                isSelected && styles.cardSelected,
+              ]}
+              onPress={() => handleSelect(type.id)}
+            >
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardIcon}>{type.icon}</Text>
+                {type.hasDualPedal && (
+                  <View style={styles.badge}>
+                    <Ionicons name="shield-checkmark" size={12} color={colors.text.white} />
+                    <Text style={styles.badgeText}>Duplo-pedal</Text>
+                  </View>
+                )}
+              </View>
+
+              <Text style={[styles.cardTitle, isSelected && styles.cardTitleSelected]}>
+                {type.title}
+              </Text>
+              <Text style={[styles.cardSubtitle, isSelected && styles.cardSubtitleSelected]}>
+                {type.subtitle}
+              </Text>
+
+              {isSelected && (
+                <View style={styles.selectedIndicator}>
+                  <Ionicons name="checkmark-circle" size={24} color={colors.background.brandPrimary} />
+                </View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Info Note */}
+      <View style={styles.infoNote}>
+        <Ionicons name="information-circle-outline" size={20} color={colors.text.tertiary} />
+        <Text style={styles.infoText}>
+          Carros com duplo-pedal garantem mais segurança durante a aula
+        </Text>
+      </View>
     </View>
   );
 }
@@ -109,54 +119,96 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: typography.fontSize["2xl"],
+    fontSize: typography.fontSize["3xl"],
     fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.fontSize.base,
     color: colors.text.secondary,
     marginBottom: spacing["3xl"],
   },
-  typesList: {
-    paddingBottom: spacing["2xl"],
+  cardsScroll: {
+    gap: spacing.lg,
+    paddingRight: spacing.xl,
   },
-  typeCard: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius["2xl"],
-    padding: spacing.xl,
-    marginBottom: spacing.lg,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  typeCardSelected: {
+  card: {
+    width: 280,
+    padding: spacing["2xl"],
     backgroundColor: colors.background.tertiary,
-    borderColor: colors.background.brandPrimary,
+    borderRadius: radius["2xl"],
+    borderWidth: 2,
+    borderColor: colors.border.secondary,
+    position: "relative",
   },
-  typeHeader: {
+  cardSelected: {
+    backgroundColor: colors.background.secondary,
+    borderColor: colors.background.brandPrimary,
+    shadowColor: colors.background.brandPrimary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: spacing.lg,
+  },
+  cardIcon: {
+    fontSize: 48,
+  },
+  badge: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: spacing.sm,
+    backgroundColor: colors.background.brandPrimary,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xxs,
+    borderRadius: radius.full,
+    gap: spacing.xxs,
   },
-  typeBadge: {
-    fontSize: 32,
-  },
-  typeTitle: {
-    fontSize: typography.fontSize.lg,
+  badgeText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.white,
     fontWeight: typography.fontWeight.semibold,
+  },
+  cardTitle: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
     marginBottom: spacing.xs,
   },
-  typeTitleSelected: {
-    color: colors.background.brandPrimary,
+  cardTitleSelected: {
+    color: colors.text.primary,
   },
-  typeSubtitle: {
+  cardSubtitle: {
     fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    lineHeight: typography.lineHeight.relaxed * typography.fontSize.sm,
+  },
+  cardSubtitleSelected: {
     color: colors.text.secondary,
   },
-  typeSubtitleSelected: {
-    color: colors.background.brandPrimary,
+  selectedIndicator: {
+    position: "absolute",
+    top: spacing.lg,
+    right: spacing.lg,
+  },
+  infoNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: spacing.lg,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.lg,
+    gap: spacing.md,
+    marginTop: spacing["3xl"],
+  },
+  infoText: {
+    flex: 1,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    lineHeight: typography.lineHeight.normal * typography.fontSize.sm,
   },
 });

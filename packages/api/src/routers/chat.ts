@@ -37,10 +37,10 @@ export const chatRouter = router({
         throw new Error("Unauthorized");
       }
 
-      // Verificar janela de tempo (permitir sempre se status é SCHEDULED para solicitações)
-      // Se a aula já foi agendada, permitir chat 1h antes até 1h depois
-      if (lesson.status === "SCHEDULED") {
-        // Permitir chat para aulas agendadas (aguardando aprovação)
+      // Verificar janela de tempo (permitir sempre se status é PENDING ou SCHEDULED para solicitações)
+      // Se a aula está pendente ou agendada, permitir chat
+      if (lesson.status === "PENDING" || lesson.status === "SCHEDULED") {
+        // Permitir chat para aulas pendentes e agendadas
         // Não há restrição de tempo
       } else {
         const now = new Date();

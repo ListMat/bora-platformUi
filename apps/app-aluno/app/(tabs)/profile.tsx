@@ -8,20 +8,20 @@ import { ProfileCompleteness } from "@/components/ProfileCompleteness";
 export default function ProfileScreen() {
   const router = useRouter();
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'profile.tsx:entry',message:'Profile screen rendered',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:entry', message: 'Profile screen rendered', data: {}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
   // #endregion
   const { data: user, isLoading: isLoadingUser } = trpc.user.me.useQuery();
   const { data: student } = trpc.student.getMyProfile.useQuery();
   const { data: completeness } = trpc.student.checkCompleteness.useQuery();
-  
+
   // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'profile.tsx:queries',message:'Queries executed',data:{hasUser:!!user,hasStudent:!!student,hasCompleteness:!!completeness,isLoadingUser},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:queries', message: 'Queries executed', data: { hasUser: !!user, hasStudent: !!student, hasCompleteness: !!completeness, isLoadingUser }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
   // #endregion
 
   // Se não tem perfil de estudante, mostrar botão para criar
   if (!isLoadingUser && !student && user) {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'profile.tsx:empty-state',message:'Showing empty state - no student profile',data:{userId:user.id,userRole:user.role},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:empty-state', message: 'Showing empty state - no student profile', data: { userId: user.id, userRole: user.role }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
     // #endregion
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -36,7 +36,7 @@ export default function ProfileScreen() {
             style={styles.createButton}
             onPress={() => {
               // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'profile.tsx:onboarding-button',message:'Onboarding button pressed',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+              fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:onboarding-button', message: 'Onboarding button pressed', data: {}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
               // #endregion
               router.push("/screens/onboarding/OnboardingFlow");
             }}
@@ -181,10 +181,12 @@ export default function ProfileScreen() {
         onPress={() => {
           Alert.alert("Sair", "Tem certeza que deseja sair?", [
             { text: "Cancelar", style: "cancel" },
-            { text: "Sair", style: "destructive", onPress: () => {
-              // TODO: Implementar logout
-              Alert.alert("Logout", "Funcionalidade de logout será implementada");
-            }},
+            {
+              text: "Sair", style: "destructive", onPress: () => {
+                // Redirecionar para login
+                router.replace("/login");
+              }
+            },
           ]);
         }}
       >

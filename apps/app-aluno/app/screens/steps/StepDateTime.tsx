@@ -1,178 +1,166 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
-import { useState, useEffect } from "react";
-import { trpc } from "@/lib/trpc";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, ActivityIndicator } from "react-native";
+import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { colors, spacing, radius, typography } from "@/theme";
+import { trpc } from "@/lib/trpc";
 
 interface StepDateTimeProps {
-  formData: any;
-  updateFormData: (updates: any) => void;
+  formData: {
+    date: Date | null;
+    time: string;
+  };
+  updateFormData: (data: any) => void;
   instructorId: string;
   onNext: () => void;
 }
 
-export default function StepDateTime({
-  formData,
-  updateFormData,
-  instructorId,
-  onNext,
-}: StepDateTimeProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | null>(formData.date);
-  const [selectedTime, setSelectedTime] = useState<string>(formData.time);
+export default function StepDateTime({ formData, updateFormData, instructorId, onNext }: StepDateTimeProps) {
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const generateDates = () => {
-    const dates: Date[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push(date);
-    }
-
-    return dates;
-  };
-
-  const dates = generateDates();
-
-  const { data: slots, isLoading: isLoadingSlots } = trpc.instructor.slots.useQuery(
+  // Fetch available slots from instructor
+  const { data: slotsData, isLoading } = trpc.instructor.slots.useQuery(
     {
       instructorId,
-      date: selectedDate || new Date(),
+      date: formData.date || new Date()
     },
-    {
-      enabled: !!selectedDate && !!instructorId,
-    }
+    { enabled: !!instructorId }
   );
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setSelectedTime("");
-    updateFormData({ date, time: "" });
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === "ios");
+    if (selectedDate) {
+      updateFormData({ date: selectedDate, time: "" });
+    }
   };
 
   const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
     updateFormData({ time });
   };
 
-  const formatDate = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.getTime() === today.getTime()) {
-      return "Hoje";
+  // Generate next 7 days for horizontal calendar
+  const getNextDays = () => {
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() + i);
+      days.push(date);
     }
-    if (date.getTime() === tomorrow.getTime()) {
-      return "Amanhã";
+    return days;
+  };
+
+  const nextDays = getNextDays();
+  const isValid = formData.date && formData.time;
+
+  // Generate 30-min interval time slots
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 8; hour <= 20; hour++) {
+      for (let min = 0; min < 60; min += 30) {
+        const timeStr = `${hour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+        slots.push(timeStr);
+      }
     }
-
-    return date.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" });
+    return slots;
   };
 
-  const renderDate = ({ item }: { item: Date }) => {
-    const isSelected = selectedDate?.getTime() === item.getTime();
-    return (
-      <TouchableOpacity
-        style={[styles.dateCard, isSelected && styles.dateCardSelected]}
-        onPress={() => handleDateSelect(item)}
-      >
-        <Text style={[styles.dateText, isSelected && styles.dateTextSelected]}>
-          {formatDate(item)}
-        </Text>
-        <Text style={[styles.dateNumber, isSelected && styles.dateNumberSelected]}>
-          {item.getDate()}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderTime = ({ item }: { item: { time: string; available: boolean } }) => {
-    const isSelected = selectedTime === item.time;
-    return (
-      <TouchableOpacity
-        style={[
-          styles.timePill,
-          !item.available && styles.timePillDisabled,
-          isSelected && styles.timePillSelected,
-        ]}
-        onPress={() => item.available && handleTimeSelect(item.time)}
-        disabled={!item.available}
-      >
-        <Text
-          style={[
-            styles.timeText,
-            !item.available && styles.timeTextDisabled,
-            isSelected && styles.timeTextSelected,
-          ]}
-        >
-          {item.time}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+  const timeSlots = generateTimeSlots();
+  const availableSlots = slotsData?.availableSlots || timeSlots;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Escolha a data e horário</Text>
-      <Text style={styles.subtitle}>Selecione quando você quer fazer a aula</Text>
+      <Text style={styles.title}>Data & Horário</Text>
+      <Text style={styles.subtitle}>Escolha quando você quer sua aula</Text>
 
+      {/* Horizontal Calendar */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Data</Text>
-        <FlatList
-          data={dates}
-          keyExtractor={(item) => item.toISOString()}
-          renderItem={renderDate}
+        <Text style={styles.sectionTitle}>Dia</Text>
+        <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.datesList}
-        />
+          contentContainerStyle={styles.calendarScroll}
+        >
+          {nextDays.map((day, index) => {
+            const isSelected = formData.date?.toDateString() === day.toDateString();
+            const dayName = day.toLocaleDateString("pt-BR", { weekday: "short" });
+            const dayNumber = day.getDate();
+            const hasAvailability = true; // TODO: Check actual availability
+
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.dayCard,
+                  isSelected && styles.dayCardSelected,
+                  !hasAvailability && styles.dayCardDisabled,
+                ]}
+                onPress={() => updateFormData({ date: day, time: "" })}
+                disabled={!hasAvailability}
+              >
+                <Text style={[styles.dayName, isSelected && styles.dayNameSelected]}>
+                  {dayName}
+                </Text>
+                <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
+                  {dayNumber}
+                </Text>
+                {hasAvailability && (
+                  <View style={[styles.availabilityDot, isSelected && styles.availabilityDotSelected]} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Horário</Text>
-        {!selectedDate ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Selecione uma data primeiro</Text>
-          </View>
-        ) : isLoadingSlots ? (
-          <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color={colors.background.brandPrimary} />
-            <Text style={styles.emptyText}>Carregando horários...</Text>
-          </View>
-        ) : !slots || slots.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              Sem horário disponível nesse dia. Tente outro dia.
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={slots}
-            keyExtractor={(item) => item.time}
-            renderItem={renderTime}
-            numColumns={3}
-            contentContainerStyle={styles.timesList}
-            columnWrapperStyle={styles.timesRow}
-          />
-        )}
-      </View>
+      {/* Time Slots */}
+      {formData.date && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Horário</Text>
+          {isLoading ? (
+            <ActivityIndicator size="small" color={colors.background.brandPrimary} />
+          ) : availableSlots.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.timeSlotsScroll}
+            >
+              {availableSlots.map((slot) => {
+                const isSelected = formData.time === slot;
+                return (
+                  <TouchableOpacity
+                    key={slot}
+                    style={[
+                      styles.timeSlot,
+                      isSelected && styles.timeSlotSelected,
+                    ]}
+                    onPress={() => handleTimeSelect(slot)}
+                  >
+                    <Text style={[styles.timeSlotText, isSelected && styles.timeSlotTextSelected]}>
+                      {slot}
+                    </Text>
+                    <Text style={[styles.timeSlotLabel, isSelected && styles.timeSlotLabelSelected]}>
+                      disponível
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="calendar-outline" size={48} color={colors.text.tertiary} />
+              <Text style={styles.emptyStateText}>Sem horário nesse dia.</Text>
+              <Text style={styles.emptyStateSubtext}>Tenta outro dia?</Text>
+            </View>
+          )}
+        </View>
+      )}
 
-      {selectedDate && selectedTime && (
-        <View style={styles.selectedInfo}>
-          <Ionicons name="checkmark-circle" size={20} color={colors.background.brandPrimary} />
-          <Text style={styles.selectedText}>
-            {formatDate(selectedDate)}, {selectedTime} – disponível
+      {/* Validation Note */}
+      {formData.date && formData.time && (
+        <View style={styles.validationNote}>
+          <Ionicons name="checkmark-circle" size={20} color={colors.text.success} />
+          <Text style={styles.validationText}>
+            {formData.date.toLocaleDateString("pt-BR", { weekday: "long" })}, {formData.time} – disponível
           </Text>
         </View>
       )}
@@ -185,10 +173,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: typography.fontSize["2xl"],
+    fontSize: typography.fontSize["3xl"],
     fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: typography.fontSize.base,
@@ -196,7 +184,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing["3xl"],
   },
   section: {
-    marginBottom: spacing["4xl"],
+    marginBottom: spacing["3xl"],
   },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
@@ -204,100 +192,116 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     marginBottom: spacing.lg,
   },
-  datesList: {
-    paddingRight: spacing["2xl"],
+  calendarScroll: {
+    gap: spacing.md,
+    paddingRight: spacing.xl,
   },
-  dateCard: {
-    width: 80,
-    height: 80,
+  dayCard: {
+    width: 70,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.background.tertiary,
     borderRadius: radius.xl,
-    backgroundColor: colors.background.secondary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: spacing.lg,
     borderWidth: 2,
-    borderColor: "transparent",
+    borderColor: colors.border.secondary,
+    alignItems: "center",
+    gap: spacing.xs,
   },
-  dateCardSelected: {
+  dayCardSelected: {
     backgroundColor: colors.background.brandPrimary,
     borderColor: colors.background.brandPrimary,
   },
-  dateText: {
-    fontSize: typography.fontSize.xs,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-  dateTextSelected: {
-    color: colors.text.white,
-  },
-  dateNumber: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.text.primary,
-  },
-  dateNumberSelected: {
-    color: colors.text.white,
-  },
-  timesList: {
-    paddingRight: spacing["2xl"],
-  },
-  timesRow: {
-    justifyContent: "flex-start",
-    marginBottom: spacing.sm,
-  },
-  timePill: {
-    paddingHorizontal: spacing["2xl"],
-    paddingVertical: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.background.secondary,
-    marginRight: spacing.sm,
-    marginBottom: spacing.sm,
-    minWidth: 80,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border.secondary,
-  },
-  timePillDisabled: {
+  dayCardDisabled: {
     opacity: 0.4,
   },
-  timePillSelected: {
+  dayName: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.tertiary,
+    textTransform: "capitalize",
+    fontWeight: typography.fontWeight.medium,
+  },
+  dayNameSelected: {
+    color: colors.text.white,
+  },
+  dayNumber: {
+    fontSize: typography.fontSize["2xl"],
+    fontWeight: typography.fontWeight.bold,
+    color: colors.text.primary,
+  },
+  dayNumberSelected: {
+    color: colors.text.white,
+  },
+  availabilityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.background.brandPrimary,
+  },
+  availabilityDotSelected: {
+    backgroundColor: colors.text.white,
+  },
+  timeSlotsScroll: {
+    gap: spacing.md,
+    paddingRight: spacing.xl,
+  },
+  timeSlot: {
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: colors.border.secondary,
+    alignItems: "center",
+    minWidth: 100,
+  },
+  timeSlotSelected: {
     backgroundColor: colors.background.brandPrimary,
     borderColor: colors.background.brandPrimary,
   },
-  timeText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
+  timeSlotText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
     color: colors.text.primary,
+    marginBottom: spacing.xxs,
   },
-  timeTextDisabled: {
-    color: colors.text.tertiary,
-  },
-  timeTextSelected: {
+  timeSlotTextSelected: {
     color: colors.text.white,
   },
-  emptyState: {
-    padding: spacing["5xl"],
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: typography.fontSize.base,
+  timeSlotLabel: {
+    fontSize: typography.fontSize.xs,
     color: colors.text.tertiary,
-    textAlign: "center",
+  },
+  timeSlotLabelSelected: {
+    color: colors.text.white,
+    opacity: 0.9,
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: spacing["4xl"],
+  },
+  emptyStateText: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.secondary,
     marginTop: spacing.lg,
   },
-  selectedInfo: {
+  emptyStateSubtext: {
+    fontSize: typography.fontSize.base,
+    color: colors.text.tertiary,
+    marginTop: spacing.xs,
+  },
+  validationNote: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.background.tertiary,
     padding: spacing.lg,
+    backgroundColor: colors.background.success + "20",
     borderRadius: radius.lg,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.background.brandPrimary,
+    gap: spacing.md,
   },
-  selectedText: {
+  validationText: {
     fontSize: typography.fontSize.sm,
-    color: colors.background.brandPrimary,
-    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.success,
+    fontWeight: typography.fontWeight.medium,
+    textTransform: "capitalize",
   },
 });

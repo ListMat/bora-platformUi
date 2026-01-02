@@ -66,39 +66,28 @@ export default function ExpandMapModal({
   // Snap points para o bottom sheet (3 níveis: 25%, 50%, 90%)
   const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
 
-  // Ajustar zoom para mostrar todos os instrutores quando o modal abrir
+  // Auto-fit: ajustar zoom para mostrar todos os instrutores (estilo Airbnb)
   useEffect(() => {
     if (visible && instructors.length > 0 && mapRef.current) {
       const coordinates = instructors
         .filter((i) => i.latitude && i.longitude)
-        .map((i) => [i.longitude!, i.latitude!] as [number, number]);
+        .map((i) => ({
+          latitude: i.latitude!,
+          longitude: i.longitude!,
+        }));
 
       if (coordinates.length > 0) {
         setTimeout(() => {
-          // Calcular bounds para fitToCoordinates equivalente
-          const lons = coordinates.map(c => c[0]);
-          const lats = coordinates.map(c => c[1]);
-          const minLon = Math.min(...lons);
-          const maxLon = Math.max(...lons);
-          const minLat = Math.min(...lats);
-          const maxLat = Math.max(...lats);
-
-          const centerLon = (minLon + maxLon) / 2;
-          const centerLat = (minLat + maxLat) / 2;
-
-          // Calcular zoom level baseado na distância
-          const latDelta = maxLat - minLat;
-          const lonDelta = maxLon - minLon;
-          const maxDelta = Math.max(latDelta, lonDelta);
-          const finalLatDelta = maxDelta > 0.1 ? 0.1 : maxDelta > 0.05 ? 0.05 : 0.02;
-          const finalLonDelta = maxDelta > 0.1 ? 0.1 : maxDelta > 0.05 ? 0.05 : 0.02;
-
-          mapRef.current?.animateToRegion({
-            latitude: centerLat,
-            longitude: centerLon,
-            latitudeDelta: finalLatDelta,
-            longitudeDelta: finalLonDelta,
-          }, 500);
+          // Usar fitToCoordinates com edgePadding (igual Airbnb)
+          mapRef.current?.fitToCoordinates(coordinates, {
+            edgePadding: {
+              top: 100,
+              right: 60,
+              bottom: 300, // Espaço para o bottom sheet
+              left: 60,
+            },
+            animated: true,
+          });
         }, 300);
       }
     }
@@ -212,29 +201,24 @@ export default function ExpandMapModal({
               ref={mapRef}
               style={styles.map}
               provider={MAP_PROVIDER}
-              customMapStyle={MAP_STYLES.dark}
+              customMapStyle={MAP_STYLES.airbnb}
               initialRegion={{
                 latitude: region.latitude,
                 longitude: region.longitude,
                 latitudeDelta: region.latitudeDelta || 0.05,
                 longitudeDelta: region.longitudeDelta || 0.05,
               }}
-              showsUserLocation={false}
+              showsUserLocation={true}
               showsMyLocationButton={false}
               toolbarEnabled={false}
+              loadingEnabled={true}
+              loadingIndicatorColor="#00C853"
+              zoomEnabled={true}
+              scrollEnabled={true}
+              pitchEnabled={false}
+              rotateEnabled={false}
             >
-              {/* Marcador da localização do usuário */}
-              <Marker
-                coordinate={{
-                  latitude: region.latitude,
-                  longitude: region.longitude,
-                }}
-                identifier="user-location"
-              >
-                <View style={styles.userLocationMarker}>
-                  <View style={styles.userLocationDot} />
-                </View>
-              </Marker>
+              {/* Marcador da localização do usuário (removido - showsUserLocation já mostra) */}
 
               {/* Marcadores dos instrutores */}
               {instructors.map((instructor) => {
@@ -255,37 +239,30 @@ export default function ExpandMapModal({
                       handleMarkerPress(instructor.id);
                     }}
                   >
-                    <TouchableOpacity
-                      onPress={() => {
-                        haptic.light();
-                        handleMarkerPress(instructor.id);
-                      }}
-                      activeOpacity={0.8}
+                    {/* Marker estilo Airbnb: foto circular + badge de nota */}
+                    <View
+                      style={[
+                        styles.airbnbMarker,
+                        isSelected && styles.airbnbMarkerSelected,
+                      ]}
                     >
-                      <View
-                        style={[
-                          styles.markerContainer,
-                          isSelected && styles.markerContainerSelected,
-                        ]}
-                      >
-                        {instructor.user.image ? (
-                          <Image
-                            source={{ uri: instructor.user.image }}
-                            style={styles.markerImage}
-                          />
-                        ) : (
-                          <View style={styles.markerImagePlaceholder}>
-                            <Ionicons name="person" size={16} color={colors.text.tertiary} />
-                          </View>
-                        )}
-                        <View style={styles.markerContent}>
-                          <Ionicons name="star" size={12} color="#FFD700" />
-                          <Text style={styles.markerRating}>
-                            {instructor.averageRating?.toFixed(1) || "0.0"}
-                          </Text>
+                      {instructor.user.image ? (
+                        <Image
+                          source={{ uri: instructor.user.image }}
+                          style={styles.airbnbMarkerImage}
+                        />
+                      ) : (
+                        <View style={styles.airbnbMarkerImagePlaceholder}>
+                          <Ionicons name="person" size={20} color="#9CA3AF" />
                         </View>
+                      )}
+                      <View style={styles.airbnbMarkerBadge}>
+                        <Ionicons name="star" size={10} color="#FFFFFF" />
+                        <Text style={styles.airbnbMarkerRating}>
+                          {instructor.averageRating?.toFixed(1) || "0.0"}
+                        </Text>
                       </View>
-                    </TouchableOpacity>
+                    </View>
                   </Marker>
                 );
               })}
@@ -569,5 +546,61 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text.white,
     alignSelf: "center",
     marginTop: 2,
+  },
+  // Markers estilo Airbnb
+  airbnbMarker: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  airbnbMarkerSelected: {
+    transform: [{ scale: 1.15 }],
+  },
+  airbnbMarkerImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  airbnbMarkerImagePlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F3F4F6",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  airbnbMarkerBadge: {
+    position: "absolute",
+    bottom: -8,
+    backgroundColor: colors.background.brandPrimary,
+    borderRadius: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  airbnbMarkerRating: {
+    fontSize: 10,
+    fontWeight: typography.fontWeight.semibold,
+    color: "#FFFFFF",
   },
 });

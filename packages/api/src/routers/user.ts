@@ -288,5 +288,31 @@ export const userRouter = router({
 
       return { success: true };
     }),
+
+  // Atualizar push token (Expo Push Notifications)
+  updatePushToken: protectedProcedure
+    .input(
+      z.object({
+        pushToken: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+      });
+
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      const updatedUser = await ctx.prisma.user.update({
+        where: { id: user.id },
+        data: { pushToken: input.pushToken },
+      });
+
+      console.log(`[Push Token] Updated for user ${user.name}: ${input.pushToken}`);
+
+      return { success: true, pushToken: updatedUser.pushToken };
+    }),
 });
 

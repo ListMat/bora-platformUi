@@ -17,6 +17,72 @@ export const MAP_PROVIDER = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
 
 // Estilos de mapa customizados para Google Maps
 export const MAP_STYLES = {
+  // Tema Airbnb (fundo claro, sem POI, visual limpo)
+  airbnb: [
+    {
+      featureType: "poi",
+      elementType: "labels",
+      stylers: [{ visibility: "off" }],
+    },
+    {
+      featureType: "poi.business",
+      stylers: [{ visibility: "off" }],
+    },
+    {
+      featureType: "poi.park",
+      elementType: "labels",
+      stylers: [{ visibility: "off" }],
+    },
+    {
+      featureType: "road",
+      elementType: "labels",
+      stylers: [{ visibility: "simplified" }],
+    },
+    {
+      featureType: "road.highway",
+      elementType: "geometry.fill",
+      stylers: [{ color: "#E5E5E5" }],
+    },
+    {
+      featureType: "road.arterial",
+      elementType: "geometry.fill",
+      stylers: [{ color: "#F0F0F0" }],
+    },
+    {
+      featureType: "road.local",
+      elementType: "geometry.fill",
+      stylers: [{ color: "#F5F5F5" }],
+    },
+    {
+      featureType: "road",
+      elementType: "geometry.stroke",
+      stylers: [{ color: "#D1D5DB" }],
+    },
+    {
+      featureType: "water",
+      elementType: "geometry.fill",
+      stylers: [{ color: "#F5F5F5" }],
+    },
+    {
+      featureType: "water",
+      elementType: "labels.text",
+      stylers: [{ visibility: "off" }],
+    },
+    {
+      featureType: "landscape",
+      elementType: "geometry.fill",
+      stylers: [{ color: "#FFFFFF" }],
+    },
+    {
+      featureType: "transit",
+      stylers: [{ visibility: "off" }],
+    },
+    {
+      featureType: "administrative",
+      elementType: "labels",
+      stylers: [{ visibility: "simplified" }],
+    },
+  ],
   // Tema escuro moderno (inspirado no Uber/99)
   dark: [
     {

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { trpc } from "@/lib/trpc";
@@ -119,10 +119,24 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={[styles.button, styles.logoutButton]}>
+      <TouchableOpacity
+        style={[styles.button, styles.logoutButton]}
+        onPress={() => {
+          Alert.alert("Sair", "Tem certeza que deseja sair?", [
+            { text: "Cancelar", style: "cancel" },
+            {
+              text: "Sair", style: "destructive", onPress: () => {
+                // Redirecionar para login
+                router.replace("/login");
+              }
+            },
+          ]);
+        }}
+      >
+        <Ionicons name="log-out-outline" size={20} color={colors.text.primary} />
         <Text style={styles.logoutText}>Sair</Text>
       </TouchableOpacity>
-      
+
       <View style={{ height: spacing['4xl'] }} />
     </ScrollView>
   );
