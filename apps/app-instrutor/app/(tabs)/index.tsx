@@ -236,12 +236,21 @@ export default function HomeScreen() {
           <Ionicons name="chatbubbles" size={24} color={colors.background.brandPrimary} />
           <Text style={styles.shortcutText}>Chat</Text>
         </TouchableOpacity>
+
         <TouchableOpacity
           style={styles.shortcutButton}
-          onPress={() => router.push("/(tabs)/finance")}
+          onPress={() => router.push("/screens/packages")}
         >
-          <Ionicons name="wallet" size={24} color={colors.background.brandPrimary} />
-          <Text style={styles.shortcutText}>Financeiro</Text>
+          <Ionicons name="pricetags" size={24} color={colors.background.brandPrimary} />
+          <Text style={styles.shortcutText}>Pacotes</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.shortcutButton}
+          onPress={() => router.push("/screens/schedule")}
+        >
+          <Ionicons name="calendar" size={24} color={colors.background.brandPrimary} />
+          <Text style={styles.shortcutText}>Agenda</Text>
         </TouchableOpacity>
       </View>
 

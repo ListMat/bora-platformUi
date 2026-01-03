@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, TextInput, TextInputProps } from "react-native";
 import { colors, spacing, radius, typography } from "@/theme";
+import { useState, useEffect } from "react";
 
 interface CPFInputProps extends Omit<TextInputProps, "value" | "onChangeText"> {
   value: string;
@@ -28,6 +29,27 @@ export function CPFInput({
   required = false,
   ...props
 }: CPFInputProps) {
+  // Estado local para o valor formatado exibido
+  const [displayValue, setDisplayValue] = useState(formatCPF(value));
+
+  // Sincroniza o valor formatado quando o valor externo muda
+  useEffect(() => {
+    setDisplayValue(formatCPF(value));
+  }, [value]);
+
+  const handleChange = (text: string) => {
+    // Atualiza o display imediatamente
+    setDisplayValue(text);
+
+    // Remove todos os caracteres não numéricos
+    const onlyNumbers = text.replace(/\D/g, "");
+
+    // Limita a 11 dígitos e notifica o pai
+    if (onlyNumbers.length <= 11) {
+      onChangeText(onlyNumbers);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {label && (
@@ -41,16 +63,8 @@ export function CPFInput({
         style={[styles.input, error && styles.inputError]}
         placeholder="000.000.000-00"
         placeholderTextColor={colors.text.tertiary}
-        value={formatCPF(value)}
-        onChangeText={(text) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'CPFInput.tsx:onChangeText', message: 'CPF input changed', data: { text, textLength: text.length, formatted: formatCPF(text) }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D' }) }).catch(() => { });
-          // #endregion
-          // Remover tudo que não é número
-          const numbers = text.replace(/\D/g, "");
-          // Permitir até 11 dígitos (CPF completo)
-          onChangeText(numbers.slice(0, 11));
-        }}
+        value={displayValue}
+        onChangeText={handleChange}
         keyboardType="numeric"
         maxLength={14} // 000.000.000-00 (14 caracteres com formatação)
       />
@@ -90,4 +104,3 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
 });
-

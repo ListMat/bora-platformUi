@@ -1,26 +1,24 @@
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
   Dimensions,
-  FlatList,
-  Image,
   Modal,
   Platform,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, radius, spacing, typography } from "@/theme";
-import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { YStack, XStack, Text, useTheme, Image as TamaguiImage } from 'tamagui';
+import { Sheet } from '@/components/ui/Sheet';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/Avatar';
+import { Badge, BadgeText } from '@/components/ui/Badge';
+
 import MapView, { Marker } from "react-native-maps";
 import { MAP_PROVIDER, MAP_STYLES } from "@/lib/maps";
 import { useHaptic } from "@/hooks/useHaptic";
+import { FlatList } from "react-native-gesture-handler";
 
-const { width, height } = Dimensions.get("window");
+const { width } = Dimensions.get("window");
 
 interface Instructor {
   id: string;
@@ -60,13 +58,10 @@ export default function ExpandMapModal({
   const haptic = useHaptic();
   const [selectedInstructor, setSelectedInstructor] = useState<string | null>(null);
   const mapRef = useRef<MapView>(null);
-  const bottomSheetRef = useRef<BottomSheet>(null);
   const flatListRef = useRef<FlatList>(null);
+  const theme = useTheme();
 
-  // Snap points para o bottom sheet (3 níveis: 25%, 50%, 90%)
-  const snapPoints = useMemo(() => ['25%', '50%', '90%'], []);
-
-  // Auto-fit: ajustar zoom para mostrar todos os instrutores (estilo Airbnb)
+  // Auto-fit logic
   useEffect(() => {
     if (visible && instructors.length > 0 && mapRef.current) {
       const coordinates = instructors
@@ -78,12 +73,11 @@ export default function ExpandMapModal({
 
       if (coordinates.length > 0) {
         setTimeout(() => {
-          // Usar fitToCoordinates com edgePadding (igual Airbnb)
           mapRef.current?.fitToCoordinates(coordinates, {
             edgePadding: {
               top: 100,
               right: 60,
-              bottom: 300, // Espaço para o bottom sheet
+              bottom: 300,
               left: 60,
             },
             animated: true,
@@ -95,10 +89,9 @@ export default function ExpandMapModal({
 
   const handleMarkerPress = (instructorId: string) => {
     setSelectedInstructor(instructorId);
-
+    // Animate map logic...
     const instructor = instructors.find((i) => i.id === instructorId);
     if (instructor && instructor.latitude && instructor.longitude && mapRef.current) {
-      // Animar mapa para o instrutor selecionado
       mapRef.current.animateToRegion({
         latitude: instructor.latitude,
         longitude: instructor.longitude,
@@ -106,501 +99,158 @@ export default function ExpandMapModal({
         longitudeDelta: 0.01,
       }, 500);
     }
-
-    // Expandir bottom sheet e scrollar para o card do instrutor
-    bottomSheetRef.current?.snapToIndex(1); // Expande para 400px
+    // Scroll list logic
     const index = instructors.findIndex((i) => i.id === instructorId);
     if (index >= 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({ index, animated: true });
-      }, 300);
+      flatListRef.current?.scrollToIndex({ index, animated: true });
     }
   };
 
-  const renderInstructorCard = ({ item, index }: { item: Instructor; index: number }) => {
+  const renderInstructorCard = ({ item }: { item: Instructor }) => {
     const isSelected = selectedInstructor === item.id;
-
     return (
-      <TouchableOpacity
-        style={[styles.instructorCard, isSelected && styles.instructorCardSelected]}
-        onPress={() => {
-          haptic.light();
-          handleMarkerPress(item.id);
-        }}
-        activeOpacity={0.8}
-        accessibilityLabel={`Instrutor ${item.user.name || "Sem nome"}, nota ${item.averageRating?.toFixed(1) || "0.0"}`}
-        accessibilityRole="button"
+      <Card
+        width={width * 0.85}
+        mr="$4"
+        bordered={!isSelected}
+        borderColor={isSelected ? '$primary' : '$borderColor'}
+        borderWidth={isSelected ? 2 : 1}
+        onPress={() => handleMarkerPress(item.id)}
+        p="$4"
+        backgroundColor="$background"
       >
-        {item.user.image ? (
-          <Image
-            source={{ uri: item.user.image }}
-            style={styles.instructorCardImage}
-          />
-        ) : (
-          <View style={styles.instructorCardImagePlaceholder}>
-            <Ionicons name="person" size={20} color={colors.text.tertiary} />
-          </View>
+        <XStack space="$3" mb="$3">
+          <Avatar size="$5" circular>
+            <AvatarImage src={item.user.image || undefined} />
+            <AvatarFallback backgroundColor="$muted">
+              <Ionicons name="person" size={20} color={theme.color.val} />
+            </AvatarFallback>
+          </Avatar>
+          <YStack flex={1}>
+            <XStack ai="center" mb="$1">
+              <Text fontWeight="700" fontSize="$4" numberOfLines={1}>{item.user.name}</Text>
+              {item.user.emailVerified && <Ionicons name="checkmark-circle" size={16} color="#3B82F6" style={{ marginLeft: 4 }} />}
+            </XStack>
+            <XStack ai="center" space="$2">
+              <Ionicons name="star" size={12} color="#FFD700" />
+              <Text fontSize="$3" opacity={0.7}>{item.averageRating?.toFixed(1)} ({item.totalLessons})</Text>
+            </XStack>
+          </YStack>
+          <YStack ai="flex-end">
+            <Text fontWeight="700" color="$primary" fontSize="$5">R$ {Math.round(item.basePrice || 0)}</Text>
+            <Text fontSize="$2" opacity={0.6}>/hora</Text>
+          </YStack>
+        </XStack>
+
+        {item.vehicles?.[0] && (
+          <XStack bg="$muted" p="$2" br="$2" mb="$3" ai="center" space="$2">
+            <Ionicons name="car" size={16} color={theme.color.val} />
+            <Text fontSize="$3" numberOfLines={1}>{item.vehicles[0].brand} {item.vehicles[0].model}</Text>
+          </XStack>
         )}
-        <View style={styles.instructorCardInfo}>
-          <View style={styles.instructorCardHeader}>
-            <Text style={styles.instructorCardName} numberOfLines={1}>
-              {item.user.name || "Instrutor"}
-            </Text>
-            {item.user.emailVerified && (
-              <Ionicons name="checkmark-circle" size={16} color="#3B82F6" />
-            )}
-          </View>
-          <View style={styles.instructorCardRating}>
-            <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.instructorCardRatingText}>
-              {item.averageRating?.toFixed(1) || "0.0"} ({item.totalLessons || 0})
-            </Text>
-          </View>
-          {item.distance && (
-            <Text style={styles.instructorCardDistance}>
-              {item.distance.toFixed(1)} km de distância
-            </Text>
-          )}
-          <Text style={styles.instructorCardPrice}>
-            R$ {Number(item.basePrice || 0).toFixed(0)}/hora
-          </Text>
-          <TouchableOpacity
-            style={styles.availabilityButton}
-            onPress={() => {
-              onClose();
-              router.push({
-                pathname: "/screens/SolicitarAulaFlow",
-                params: { instructorId: item.id },
-              });
-            }}
-          >
-            <Text style={styles.availabilityButtonText}>Ver disponibilidade</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
+
+        <Button
+          onPress={() => {
+            onClose();
+            router.push({
+              pathname: "/screens/SolicitarAulaFlow",
+              params: { instructorId: item.id },
+            });
+          }}
+          fullWidth
+        >
+          Ver disponibilidade
+        </Button>
+      </Card>
     );
   };
 
-  if (!visible) return null;
-
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <GestureHandlerRootView style={styles.gestureContainer}>
-        <StatusBar style="light" translucent />
-
-        {/* MapContainer - Ocupa 100% da tela (absolute) */}
-        <View style={styles.mapContainer}>
-          {region && (
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              provider={MAP_PROVIDER}
-              customMapStyle={MAP_STYLES.airbnb}
-              initialRegion={{
-                latitude: region.latitude,
-                longitude: region.longitude,
-                latitudeDelta: region.latitudeDelta || 0.05,
-                longitudeDelta: region.longitudeDelta || 0.05,
-              }}
-              showsUserLocation={true}
-              showsMyLocationButton={false}
-              toolbarEnabled={false}
-              loadingEnabled={true}
-              loadingIndicatorColor="#00C853"
-              zoomEnabled={true}
-              scrollEnabled={true}
-              pitchEnabled={false}
-              rotateEnabled={false}
-            >
-              {/* Marcador da localização do usuário (removido - showsUserLocation já mostra) */}
-
-              {/* Marcadores dos instrutores */}
-              {instructors.map((instructor) => {
-                if (!instructor.latitude || !instructor.longitude) return null;
-
-                const isSelected = selectedInstructor === instructor.id;
-
-                return (
-                  <Marker
-                    key={instructor.id}
-                    identifier={`instructor-${instructor.id}`}
-                    coordinate={{
-                      latitude: instructor.latitude,
-                      longitude: instructor.longitude,
-                    }}
-                    onPress={() => {
-                      haptic.light();
-                      handleMarkerPress(instructor.id);
-                    }}
-                  >
-                    {/* Marker estilo Airbnb: foto circular + badge de nota */}
-                    <View
-                      style={[
-                        styles.airbnbMarker,
-                        isSelected && styles.airbnbMarkerSelected,
-                      ]}
-                    >
-                      {instructor.user.image ? (
-                        <Image
-                          source={{ uri: instructor.user.image }}
-                          style={styles.airbnbMarkerImage}
-                        />
-                      ) : (
-                        <View style={styles.airbnbMarkerImagePlaceholder}>
-                          <Ionicons name="person" size={20} color="#9CA3AF" />
-                        </View>
-                      )}
-                      <View style={styles.airbnbMarkerBadge}>
-                        <Ionicons name="star" size={10} color="#FFFFFF" />
-                        <Text style={styles.airbnbMarkerRating}>
-                          {instructor.averageRating?.toFixed(1) || "0.0"}
-                        </Text>
-                      </View>
-                    </View>
-                  </Marker>
-                );
-              })}
-            </MapView>
-          )}
-        </View>
-
-        {/* Header transparente com botão fechar (absolute sobre o mapa) */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => {
-              haptic.light();
-              onClose();
+    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <YStack f={1} bg="$background">
+        {region && (
+          <MapView
+            ref={mapRef}
+            style={{ flex: 1 }}
+            provider={MAP_PROVIDER}
+            customMapStyle={MAP_STYLES.airbnb}
+            initialRegion={{
+              ...region,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
             }}
-            accessibilityLabel="Fechar mapa"
-            accessibilityRole="button"
+            showsUserLocation={true}
           >
-            <Ionicons name="close" size={24} color={colors.text.white} />
-          </TouchableOpacity>
-        </View>
+            {instructors.map((instructor) => {
+              if (!instructor.latitude || !instructor.longitude) return null;
+              const isSelected = selectedInstructor === instructor.id;
+              return (
+                <Marker
+                  key={instructor.id}
+                  coordinate={{ latitude: instructor.latitude, longitude: instructor.longitude }}
+                  onPress={() => handleMarkerPress(instructor.id)}
+                >
+                  <YStack ai="center" jc="center" scale={isSelected ? 1.2 : 1}>
+                    <Avatar size="$4" circular borderWidth={2} borderColor="white">
+                      <AvatarImage src={instructor.user.image || undefined} />
+                      <AvatarFallback bg="$muted" />
+                    </Avatar>
+                    <Badge position="absolute" bottom={-8} bg="$primary" px="$1.5" py={2} br={12}>
+                      <XStack ai="center" space={2}>
+                        <Ionicons name="star" size={8} color="white" />
+                        <Text fontSize={10} color="white" fontWeight="bold">{instructor.averageRating?.toFixed(1)}</Text>
+                      </XStack>
+                    </Badge>
+                  </YStack>
+                </Marker>
+              )
+            })}
+          </MapView>
+        )}
 
-        {/* Bottom Sheet (sobre o MapContainer) */}
-        <BottomSheet
-          ref={bottomSheetRef}
-          index={1} // Começa no meio (50%)
-          snapPoints={snapPoints}
-          enablePanDownToClose={false} // Não fecha ao arrastar para baixo
-          backgroundStyle={styles.bottomSheetBackground}
-          handleIndicatorStyle={styles.bottomSheetHandleIndicator}
-          onChange={(index) => {
-            if (index === 2) haptic.light(); // Feedback ao expandir máximo
-          }}
+        <Button
+          position="absolute"
+          top={Platform.OS === 'ios' ? 60 : 40}
+          right={20}
+          circular
+          size="$4"
+          icon={<Ionicons name="close" size={24} color={theme.color.val} />}
+          onPress={onClose}
+          bg="$background"
+          elevation={5}
+        />
+
+        <Sheet
+          modal={false} // Inline
+          open={true}
+          snapPoints={[25, 50, 90]}
+          dismissOnSnapToBottom={false}
+          position={0} // Default index
         >
-          <View style={styles.bottomSheetContent}>
-            <Text style={styles.bottomSheetTitle}>Instrutores próximos</Text>
-
+          <Sheet.Overlay />
+          <Sheet.Frame padding="$4" bg="$background" elevation={10}>
+            <Sheet.Handle />
+            <Text fontSize="$6" fontWeight="bold" mb="$4" px="$2">Instrutores próximos</Text>
             {instructors.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="location-outline" size={48} color={colors.text.tertiary} />
-                <Text style={styles.emptyStateText}>
-                  Ninguém por aqui. Tente ampliar a área.
-                </Text>
-              </View>
+              <YStack ai="center" py="$6">
+                <Ionicons name="location" size={48} color={theme.color.val} style={{ opacity: 0.3 }} />
+                <Text mt="$4" opacity={0.6}>Nenhum instrutor nesta área.</Text>
+              </YStack>
             ) : (
-              <BottomSheetFlatList
+              <FlatList
                 ref={flatListRef}
                 data={instructors}
-                keyExtractor={(item) => item.id}
-                renderItem={renderInstructorCard}
                 horizontal
+                renderItem={renderInstructorCard}
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.cardsList}
-                snapToInterval={width * 0.85}
+                snapToInterval={width * 0.85 + 16} // card width + margin
                 decelerationRate="fast"
-                onScrollToIndexFailed={(info) => {
-                  setTimeout(() => {
-                    flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
-                  }, 100);
-                }}
+                contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 20 }}
               />
             )}
-          </View>
-        </BottomSheet>
-      </GestureHandlerRootView>
+          </Sheet.Frame>
+        </Sheet>
+      </YStack>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  gestureContainer: {
-    flex: 1,
-  },
-  // MapContainer - Ocupa 100% da tela
-  mapContainer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  map: {
-    flex: 1,
-  },
-  // Header - Absolute sobre o mapa
-  header: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 50 : 40,
-    right: spacing.xl,
-    zIndex: 10,
-    backgroundColor: "transparent",
-  },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    backgroundColor: colors.background.secondary,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: colors.border.secondary,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  // Bottom Sheet
-  bottomSheetBackground: {
-    backgroundColor: colors.background.secondary,
-    borderTopLeftRadius: radius["3xl"],
-    borderTopRightRadius: radius["3xl"],
-  },
-  bottomSheetHandleIndicator: {
-    backgroundColor: colors.border.secondary,
-    width: 40,
-    height: 4,
-  },
-  bottomSheetContent: {
-    flex: 1,
-    paddingTop: spacing.md,
-  },
-  bottomSheetTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-    paddingHorizontal: spacing.xl,
-    marginBottom: spacing.md,
-  },
-  cardsList: {
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing["4xl"],
-  },
-  instructorCard: {
-    width: width * 0.85,
-    backgroundColor: colors.background.tertiary,
-    borderRadius: radius["2xl"],
-    padding: spacing.lg,
-    marginRight: spacing.lg,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  instructorCardSelected: {
-    borderColor: colors.background.brandPrimary,
-    backgroundColor: colors.background.secondary,
-  },
-  instructorCardImage: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.xl,
-    marginBottom: spacing.md,
-  },
-  instructorCardImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: radius.xl,
-    backgroundColor: colors.background.quaternary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: spacing.md,
-  },
-  instructorCardInfo: {
-    flex: 1,
-  },
-  instructorCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: spacing.xs,
-  },
-  instructorCardName: {
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.text.primary,
-    marginRight: spacing.xs,
-  },
-  instructorCardRating: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: spacing.xs,
-  },
-  instructorCardRatingText: {
-    fontSize: typography.fontSize.sm,
-    color: colors.text.secondary,
-    marginLeft: spacing.xs,
-  },
-  instructorCardDistance: {
-    fontSize: typography.fontSize.sm,
-    color: colors.text.tertiary,
-    marginBottom: spacing.xs,
-  },
-  instructorCardPrice: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.background.brandPrimary,
-    marginBottom: spacing.md,
-  },
-  availabilityButton: {
-    backgroundColor: colors.background.brandPrimary,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    alignItems: "center",
-  },
-  availabilityButtonText: {
-    fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.text.white,
-  },
-  markerContainer: {
-    backgroundColor: colors.background.secondary,
-    borderRadius: radius.full,
-    padding: spacing.xs,
-    borderWidth: 2,
-    borderColor: colors.border.secondary,
-    alignItems: "center",
-    minWidth: 60,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  markerContainerSelected: {
-    borderColor: colors.background.brandPrimary,
-    backgroundColor: colors.background.brandPrimary,
-    transform: [{ scale: 1.2 }],
-  },
-  markerImage: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    marginBottom: spacing.xs,
-  },
-  markerImagePlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: radius.full,
-    backgroundColor: colors.background.tertiary,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: spacing.xs,
-  },
-  markerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  markerRating: {
-    fontSize: typography.fontSize.xs,
-    color: colors.text.primary,
-    marginLeft: spacing.xs,
-    fontWeight: typography.fontWeight.medium,
-  },
-  emptyState: {
-    padding: spacing["4xl"],
-    alignItems: "center",
-  },
-  emptyStateText: {
-    fontSize: typography.fontSize.base,
-    color: colors.text.tertiary,
-    marginTop: spacing.lg,
-    textAlign: "center",
-  },
-  userLocationMarker: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.background.brandPrimary,
-    borderWidth: 3,
-    borderColor: colors.text.white,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  userLocationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.text.white,
-    alignSelf: "center",
-    marginTop: 2,
-  },
-  // Markers estilo Airbnb
-  airbnbMarker: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  airbnbMarkerSelected: {
-    transform: [{ scale: 1.15 }],
-  },
-  airbnbMarkerImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  airbnbMarkerImagePlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F3F4F6",
-    borderWidth: 2,
-    borderColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  airbnbMarkerBadge: {
-    position: "absolute",
-    bottom: -8,
-    backgroundColor: colors.background.brandPrimary,
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  airbnbMarkerRating: {
-    fontSize: 10,
-    fontWeight: typography.fontWeight.semibold,
-    color: "#FFFFFF",
-  },
-});

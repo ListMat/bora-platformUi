@@ -24,12 +24,17 @@ import { useViaCep } from '@/hooks/useViaCep';
 
 // Masks
 const maskCPF = (v: string) => {
-    return v
-        .replace(/\D/g, '')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d)/, '$1.$2')
-        .replace(/(\d{3})(\d{1,2})/, '-$1')
-        .replace(/(-\d{2})\d+?$/, '$1');
+    // Remove tudo que não é número
+    const numbers = v.replace(/\D/g, '');
+
+    // Limita a 11 dígitos
+    const limited = numbers.substring(0, 11);
+
+    // Formata progressivamente
+    if (limited.length <= 3) return limited;
+    if (limited.length <= 6) return `${limited.slice(0, 3)}.${limited.slice(3)}`;
+    if (limited.length <= 9) return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6)}`;
+    return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6, 9)}-${limited.slice(9)}`;
 };
 
 const maskPhone = (v: string) => {

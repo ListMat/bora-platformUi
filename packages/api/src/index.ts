@@ -13,6 +13,7 @@ import { vehicleRouter } from "./routers/vehicle";
 import { planRouter } from "./routers/plan";
 import { notificationRouter } from "./routers/notification";
 import { adminRouter } from "./routers/admin";
+import { availabilityRouter } from "./routers/availability";
 
 export const appRouter = router({
   user: userRouter,
@@ -29,6 +30,7 @@ export const appRouter = router({
   plan: planRouter,
   notification: notificationRouter,
   admin: adminRouter,
+  availability: availabilityRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -58,10 +58,35 @@ export default function OnboardingFlow() {
     basePrice: 100,
   });
 
+  // Queries e Mutations
+  const { data: existingProfile, isLoading: isLoadingProfile } = trpc.instructor.getMyProfile.useQuery(undefined, { retry: false });
+
   const createInstructor = trpc.instructor.create.useMutation();
+  const updateInstructor = trpc.instructor.update.useMutation();
   const uploadCNH = trpc.instructor.uploadDocument.useMutation();
   const uploadCredential = trpc.instructor.uploadDocument.useMutation();
   const updateLocation = trpc.instructor.updateLocation.useMutation();
+
+  // Carregar dados existentes
+  useEffect(() => {
+    if (existingProfile) {
+      setData({
+        cpf: existingProfile.cpf || "",
+        phone: existingProfile.user?.phone || "",
+        cnhNumber: existingProfile.cnhNumber || "",
+        credentialNumber: existingProfile.credentialNumber || "",
+        credentialExpiry: existingProfile.credentialExpiry ? new Date(existingProfile.credentialExpiry) : null,
+        cnhDocument: existingProfile.cnhDocument || undefined,
+        credentialDocument: existingProfile.credentialDoc || undefined,
+        city: existingProfile.city || "",
+        state: existingProfile.state || "",
+        latitude: existingProfile.latitude || undefined,
+        longitude: existingProfile.longitude || undefined,
+        basePrice: existingProfile.basePrice || 100,
+        stripeOnboarded: !!existingProfile.stripeAccountId,
+      });
+    }
+  }, [existingProfile]);
 
   const updateData = (stepData: Partial<OnboardingData>) => {
     setData((prev) => ({ ...prev, ...stepData }));
@@ -85,25 +110,39 @@ export default function OnboardingFlow() {
 
   const handleSubmit = async () => {
     try {
-      // Step 1-4: Criar perfil
-      if (!data.credentialExpiry) {
-        Alert.alert("Erro", "Data de validade da credencial é obrigatória");
-        return;
+      let instructorId;
+
+      if (existingProfile) {
+        // MODO EDIÇÃO: Atualizar dados permitidos
+        const updated = await updateInstructor.mutateAsync({
+          city: data.city,
+          state: data.state,
+          basePrice: data.basePrice,
+          phone: data.phone,
+        });
+        instructorId = updated.id;
+      } else {
+        // MODO CRIAÇÃO: Criar novo perfil
+        if (!data.credentialExpiry) {
+          Alert.alert("Erro", "Data de validade da credencial é obrigatória");
+          return;
+        }
+
+        const newInstructor = await createInstructor.mutateAsync({
+          cpf: data.cpf,
+          cnhNumber: data.cnhNumber,
+          credentialNumber: data.credentialNumber,
+          credentialExpiry: data.credentialExpiry,
+          city: data.city,
+          state: data.state,
+          basePrice: data.basePrice,
+          phone: data.phone,
+        });
+        instructorId = newInstructor.id;
       }
 
-      const instructor = await createInstructor.mutateAsync({
-        cpf: data.cpf,
-        cnhNumber: data.cnhNumber,
-        credentialNumber: data.credentialNumber,
-        credentialExpiry: data.credentialExpiry,
-        city: data.city,
-        state: data.state,
-        basePrice: data.basePrice,
-        phone: data.phone,
-      });
-
-      // Upload de documentos se fornecidos (após criar perfil)
-      if (data.cnhDocument && instructor) {
+      // Upload de documentos (apenas se for novo upload - base64)
+      if (data.cnhDocument && data.cnhDocument.startsWith('data:')) {
         try {
           await uploadCNH.mutateAsync({
             documentType: "cnh",
@@ -114,7 +153,7 @@ export default function OnboardingFlow() {
         }
       }
 
-      if (data.credentialDocument && instructor) {
+      if (data.credentialDocument && data.credentialDocument.startsWith('data:')) {
         try {
           await uploadCredential.mutateAsync({
             documentType: "credential",
@@ -125,7 +164,7 @@ export default function OnboardingFlow() {
         }
       }
 
-      // Atualizar localização se disponível
+      // Atualizar localização se disponível e alterada
       if (data.latitude && data.longitude) {
         await updateLocation.mutateAsync({
           latitude: data.latitude,
@@ -135,7 +174,9 @@ export default function OnboardingFlow() {
 
       Alert.alert(
         "Sucesso!",
-        "Seu cadastro foi enviado para análise. Você receberá uma notificação quando for aprovado.",
+        existingProfile
+          ? "Seu perfil foi atualizado com sucesso."
+          : "Seu cadastro foi enviado para análise. Você receberá uma notificação quando for aprovado.",
         [
           {
             text: "OK",
@@ -144,11 +185,14 @@ export default function OnboardingFlow() {
         ]
       );
     } catch (error: any) {
-      Alert.alert("Erro", error.message || "Erro ao criar perfil");
+      Alert.alert("Erro", error.message || "Erro ao salvar perfil");
     }
   };
 
   const renderStep = () => {
+    // Se estiver carregando perfil, mostrar loading
+    if (isLoadingProfile) return null;
+
     switch (currentStep) {
       case 1:
         return (
@@ -208,8 +252,9 @@ export default function OnboardingFlow() {
     }
   };
 
-  const isLoading =
+  const isSaving =
     createInstructor.isLoading ||
+    updateInstructor.isLoading ||
     uploadCNH.isLoading ||
     uploadCredential.isLoading ||
     updateLocation.isLoading;
@@ -221,7 +266,9 @@ export default function OnboardingFlow() {
         <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Cadastro de Instrutor</Text>
+        <Text style={styles.title}>
+          {existingProfile ? "Editar Instrutor" : "Cadastro de Instrutor"}
+        </Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -246,11 +293,18 @@ export default function OnboardingFlow() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {renderStep()}
+        {isLoadingProfile ? (
+          <View style={{ padding: 20, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.background.brandPrimary} />
+            <Text style={styles.loadingText}>Carregando dados...</Text>
+          </View>
+        ) : (
+          renderStep()
+        )}
       </ScrollView>
 
       {/* Loading Overlay */}
-      {isLoading && (
+      {isSaving && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={colors.background.brandPrimary} />
           <Text style={styles.loadingText}>Processando...</Text>

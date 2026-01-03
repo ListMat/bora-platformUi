@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
     TouchableWithoutFeedback,
     Keyboard,
-    ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
-import { tokens } from '@/theme/tokens';
+import { YStack, XStack, Text, ScrollView, useTheme } from 'tamagui';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
 
 const loginSchema = z.object({
     email: z.string().email('E-mail inválido'),
@@ -32,6 +28,7 @@ export default function LoginScreen() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const theme = useTheme();
 
     const handleLogin = async () => {
         setError(null);
@@ -48,7 +45,7 @@ export default function LoginScreen() {
                 const target = Array.isArray(redirect) ? redirect[0] : redirect;
                 router.replace(decodeURIComponent(target) as any);
             } else {
-                router.replace('/(tabs)/home');
+                router.replace('/(tabs)');
             }
         } catch (e: any) {
             setError(e.message || 'Falha ao entrar');
@@ -60,245 +57,97 @@ export default function LoginScreen() {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
+            style={{ flex: 1, backgroundColor: theme.background.val }}
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    <View style={styles.header}>
-                        <Text style={styles.logo}>BORA</Text>
-                        <Text style={styles.title}>Entrar</Text>
-                    </View>
+                <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 32 }}>
+                    <YStack ai="center" mb="$10">
+                        <Text fontSize="$9" fontWeight="900" color="$primary" mb="$2">BORA</Text>
+                        <Text fontSize="$6" fontWeight="700" color="$color">Entrar</Text>
+                    </YStack>
 
-                    <View style={styles.form}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>E-mail</Text>
-                            <TextInput
-                                style={[styles.input, error ? styles.inputError : undefined]}
+                    <YStack space="$4">
+                        <YStack space="$2">
+                            <Text fontSize="$3" fontWeight="500" color="$color" opacity={0.7}>E-mail</Text>
+                            <Input
                                 placeholder="Ex: joao@email.com"
-                                placeholderTextColor={tokens.colors.text.placeholder}
                                 value={email}
                                 onChangeText={setEmail}
                                 autoCapitalize="none"
                                 keyboardType="email-address"
-                                accessibilityLabel="Campo de e-mail"
                             />
-                        </View>
+                        </YStack>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Senha</Text>
-                            <View style={[styles.inputContainer, error ? styles.inputError : undefined]}>
-                                <TextInput
-                                    style={styles.inputFlex}
+                        <YStack space="$2">
+                            <Text fontSize="$3" fontWeight="500" color="$color" opacity={0.7}>Senha</Text>
+                            <XStack alignItems="center" w="100%">
+                                <Input
+                                    flex={1}
                                     placeholder="******"
-                                    placeholderTextColor={tokens.colors.text.placeholder}
                                     value={password}
                                     onChangeText={setPassword}
                                     secureTextEntry={!showPassword}
-                                    accessibilityLabel="Campo de senha"
                                 />
-                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                                    <Ionicons
-                                        name={showPassword ? 'eye-off' : 'eye'}
-                                        size={20}
-                                        color={tokens.colors.text.secondary}
-                                    />
-                                </TouchableOpacity>
-                            </View>
-                            <TouchableOpacity
+                                <Button
+                                    position="absolute"
+                                    right={0}
+                                    chromeless
+                                    onPress={() => setShowPassword(!showPassword)}
+                                >
+                                    <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={theme.color.val} />
+                                </Button>
+                            </XStack>
+                            <Button
+                                alignSelf="flex-end"
+                                chromeless
+                                size="$2"
                                 onPress={() => router.push('/forgot-password')}
-                                style={styles.forgotPassContainer}
+                                pressStyle={{ opacity: 0.7 }}
+                                backgroundColor="transparent"
                             >
-                                <Text style={styles.forgotPassText}>Esqueci minha senha</Text>
-                            </TouchableOpacity>
-                        </View>
+                                <Text color="$color" opacity={0.7} fontSize="$2">Esqueci minha senha</Text>
+                            </Button>
+                        </YStack>
 
                         {error && (
-                            <View style={styles.errorContainer}>
-                                <Ionicons name="alert-circle" size={16} color={tokens.colors.text.error} />
-                                <Text style={styles.errorText}>{error}</Text>
-                            </View>
+                            <XStack bg="$red3" p="$3" br="$3" ai="center" space="$2">
+                                <Ionicons name="alert-circle" size={16} color="red" />
+                                <Text color="red" fontSize="$3">{error}</Text>
+                            </XStack>
                         )}
 
-                        <TouchableOpacity
-                            style={[
-                                styles.buttonPrimary,
-                                (loading || !email || !password) && styles.buttonDisabled,
-                            ]}
+                        <Button
                             onPress={handleLogin}
                             disabled={loading || !email || !password}
+                            opacity={(loading || !email || !password) ? 0.7 : 1}
                         >
-                            {loading ? (
-                                <ActivityIndicator color={tokens.colors.text.primaryOnBrand} />
-                            ) : (
-                                <Text style={styles.buttonPrimaryText}>Entrar</Text>
-                            )}
-                        </TouchableOpacity>
+                            {loading ? <ActivityIndicator color="white" /> : "Entrar"}
+                        </Button>
 
-                        <View style={styles.divider}>
-                            <View style={styles.line} />
-                            <Text style={styles.dividerText}>ou</Text>
-                            <View style={styles.line} />
-                        </View>
+                        <XStack ai="center" my="$4">
+                            <Separator />
+                            <Text mx="$3" color="$color" opacity={0.5}>ou</Text>
+                            <Separator />
+                        </XStack>
 
-                        <TouchableOpacity style={styles.socialButton}>
-                            <Ionicons name="logo-google" size={20} color={tokens.colors.text.primary} />
-                            <Text style={styles.socialButtonText}>Entrar com Google</Text>
-                        </TouchableOpacity>
+                        <Button variant="outline" onPress={() => { }}>
+                            <XStack space="$2" ai="center">
+                                <Ionicons name="logo-google" size={20} color={theme.color.val} />
+                                <Text color="$color" fontWeight="500">Entrar com Google</Text>
+                            </XStack>
+                        </Button>
 
-                        <View style={styles.footer}>
-                            <Text style={styles.footerText}>Não tem conta?</Text>
-                            <TouchableOpacity onPress={() => router.push('/register')}>
-                                <Text style={styles.footerLink}>Criar conta</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
+                        <XStack jc="center" mt="$6" space="$2" ai="center">
+                            <Text color="$color" opacity={0.7}>Não tem conta?</Text>
+                            <Button p={0} h="auto" chromeless onPress={() => router.push('/register')} backgroundColor="transparent">
+                                <Text color="$primary" fontWeight="600">Criar conta</Text>
+                            </Button>
+                        </XStack>
+                    </YStack>
                 </ScrollView>
             </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: tokens.colors.background.primary,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        padding: tokens.spacing['4xl'], // 32
-        justifyContent: 'center',
-    },
-    header: {
-        marginBottom: tokens.spacing['4xl'],
-        alignItems: 'center',
-    },
-    logo: {
-        fontSize: tokens.typography.fontSize['3xl'],
-        fontWeight: '900',
-        color: tokens.colors.background.brandPrimary,
-        marginBottom: tokens.spacing.sm,
-    },
-    title: {
-        fontSize: tokens.typography.fontSize['2xl'],
-        fontWeight: '700',
-        color: tokens.colors.text.primary,
-    },
-    form: {
-        gap: tokens.spacing.lg,
-    },
-    inputGroup: {
-        gap: tokens.spacing.xs,
-    },
-    label: {
-        fontSize: tokens.typography.fontSize.sm,
-        fontWeight: '500',
-        color: tokens.colors.text.secondary,
-    },
-    input: {
-        height: 48,
-        borderWidth: 1,
-        borderColor: tokens.colors.border.secondary,
-        borderRadius: tokens.radius.md,
-        paddingHorizontal: tokens.spacing.md,
-        color: tokens.colors.text.primary,
-        backgroundColor: tokens.colors.background.secondary,
-    },
-    inputContainer: {
-        height: 48,
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: tokens.colors.border.secondary,
-        borderRadius: tokens.radius.md,
-        paddingHorizontal: tokens.spacing.md,
-        backgroundColor: tokens.colors.background.secondary,
-    },
-    inputFlex: {
-        flex: 1,
-        height: '100%',
-        color: tokens.colors.text.primary,
-    },
-    inputError: {
-        borderColor: tokens.colors.border.error,
-    },
-    forgotPassContainer: {
-        alignSelf: 'flex-end',
-        marginTop: tokens.spacing.xs,
-    },
-    forgotPassText: {
-        color: tokens.colors.text.secondary,
-        fontSize: tokens.typography.fontSize.xs,
-    },
-    errorContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: tokens.spacing.xs,
-        backgroundColor: 'rgba(240, 68, 56, 0.1)',
-        padding: tokens.spacing.sm,
-        borderRadius: tokens.radius.sm,
-    },
-    errorText: {
-        color: tokens.colors.text.error,
-        fontSize: tokens.typography.fontSize.sm,
-    },
-    buttonPrimary: {
-        height: 48,
-        backgroundColor: tokens.colors.background.brandPrimary,
-        borderRadius: tokens.radius.md,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: tokens.spacing.md,
-    },
-    buttonDisabled: {
-        opacity: 0.7,
-        backgroundColor: tokens.colors.background.disabled,
-    },
-    buttonPrimaryText: {
-        color: tokens.colors.text.primaryOnBrand,
-        fontWeight: '600',
-        fontSize: tokens.typography.fontSize.base,
-    },
-    divider: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: tokens.spacing.lg,
-    },
-    line: {
-        flex: 1,
-        height: 1,
-        backgroundColor: tokens.colors.border.secondary,
-    },
-    dividerText: {
-        marginHorizontal: tokens.spacing.md,
-        color: tokens.colors.text.tertiary,
-        fontSize: tokens.typography.fontSize.sm,
-    },
-    socialButton: {
-        height: 48,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: tokens.colors.border.secondary,
-        borderRadius: tokens.radius.md,
-        backgroundColor: tokens.colors.background.secondary,
-        gap: tokens.spacing.md,
-    },
-    socialButtonText: {
-        color: tokens.colors.text.primary,
-        fontWeight: '500',
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginTop: tokens.spacing['2xl'],
-        gap: tokens.spacing.xs,
-    },
-    footerText: {
-        color: tokens.colors.text.secondary,
-    },
-    footerLink: {
-        color: tokens.colors.text.primary,
-        fontWeight: '600',
-    },
-});
+const Separator = () => <YStack f={1} h={1} bg="$borderColor" />

@@ -11,13 +11,15 @@
   },
   "dependencies": {
     "@bora/ui": "workspace:*",
+    "@react-google-maps/api": "^2.20.8",
     "@trpc/client": "^11.0.0",
     "@trpc/next": "^11.0.0",
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
     "next": "^15.0.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-spring-bottom-sheet": "^3.4.1"
   },
   "devDependencies": {
     "@bora/eslint-config": "workspace:*",

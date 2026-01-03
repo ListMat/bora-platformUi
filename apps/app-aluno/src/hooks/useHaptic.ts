@@ -1,7 +1,11 @@
 import * as Haptics from 'expo-haptics';
+import { Platform } from 'react-native';
 
 export function useHaptic() {
+  const isWeb = Platform.OS === 'web';
+
   const light = () => {
+    if (isWeb) return; // Haptics não funciona na web
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
@@ -10,6 +14,7 @@ export function useHaptic() {
   };
 
   const medium = () => {
+    if (isWeb) return; // Haptics não funciona na web
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (error) {
@@ -18,6 +23,7 @@ export function useHaptic() {
   };
 
   const heavy = () => {
+    if (isWeb) return; // Haptics não funciona na web
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     } catch (error) {
@@ -26,6 +32,7 @@ export function useHaptic() {
   };
 
   const success = () => {
+    if (isWeb) return; // Haptics não funciona na web
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
@@ -34,6 +41,7 @@ export function useHaptic() {
   };
 
   const error = () => {
+    if (isWeb) return; // Haptics não funciona na web
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } catch (error) {
@@ -42,6 +50,7 @@ export function useHaptic() {
   };
 
   const warning = () => {
+    if (isWeb) return; // Haptics não funciona na web
     try {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } catch (error) {

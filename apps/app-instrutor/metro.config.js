@@ -1,6 +1,7 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("path");
+const { withTamagui } = require('@tamagui/metro-plugin');
 
 // Encontrar o diretório raiz do workspace (onde está o pnpm-lock.yaml)
 const projectRoot = __dirname;
@@ -21,4 +22,9 @@ config.resolver.nodeModulesPaths = [
 // Resolver dependências de pacotes compartilhados
 config.resolver.unstable_enablePackageExports = true;
 
-module.exports = config;
+// Wrap with Tamagui
+module.exports = withTamagui(config, {
+  components: ['tamagui'],
+  config: './tamagui.config.ts',
+  outputCSS: './tamagui-web.css',
+});

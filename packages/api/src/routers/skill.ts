@@ -49,25 +49,25 @@ export const skillRouter = router({
 
       // Criar avaliações
       const evaluations = await Promise.all(
-        input.evaluations.map((eval) =>
+        input.evaluations.map((evaluation) =>
           ctx.prisma.skillEvaluation.upsert({
             where: {
               lessonId_skillId: {
                 lessonId: input.lessonId,
-                skillId: eval.skillId,
+                skillId: evaluation.skillId,
               },
             },
             create: {
               lessonId: input.lessonId,
               studentId: lesson.studentId,
-              skillId: eval.skillId,
+              skillId: evaluation.skillId,
               instructorId: user.instructor!.id,
-              rating: eval.rating,
-              comment: eval.comment,
+              rating: evaluation.rating,
+              comment: evaluation.comment,
             },
             update: {
-              rating: eval.rating,
-              comment: eval.comment,
+              rating: evaluation.rating,
+              comment: evaluation.comment,
             },
           })
         )
@@ -107,7 +107,7 @@ export const skillRouter = router({
         const avgRating =
           evaluations.length > 0
             ? evaluations.reduce((sum, e) => sum + e.rating, 0) /
-              evaluations.length
+            evaluations.length
             : 0;
 
         const lastRating = evaluations[0]?.rating || 0;

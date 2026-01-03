@@ -239,6 +239,7 @@ model Instructor {
   user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   lessons           Lesson[]
   availability      InstructorAvailability[]
+  plans             Plan[]
   ratings           Rating[]
   skillEvaluations  SkillEvaluation[]
 
@@ -462,10 +463,15 @@ model Plan {
   isActive    Boolean  @default(true)
   featured    Boolean  @default(false)
   
+  // Relacionamento com Instrutor (Opcional)
+  instructorId String?
+  instructor   Instructor? @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([isActive, featured])
+  @@index([instructorId])
   @@map("plans")
 }
 

@@ -1,49 +1,33 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Alert } from "react-native";
+import { Alert } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { colors, spacing, radius, typography } from "@/theme";
 import { trpc } from "@/lib/trpc";
 import { ProfileCompleteness } from "@/components/ProfileCompleteness";
+import { YStack, XStack, Text, ScrollView, useTheme } from 'tamagui';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/Avatar';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:entry', message: 'Profile screen rendered', data: {}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-  // #endregion
   const { data: user, isLoading: isLoadingUser } = trpc.user.me.useQuery();
   const { data: student } = trpc.student.getMyProfile.useQuery();
   const { data: completeness } = trpc.student.checkCompleteness.useQuery();
+  const theme = useTheme();
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:queries', message: 'Queries executed', data: { hasUser: !!user, hasStudent: !!student, hasCompleteness: !!completeness, isLoadingUser }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B' }) }).catch(() => { });
-  // #endregion
-
-  // Se não tem perfil de estudante, mostrar botão para criar
   if (!isLoadingUser && !student && user) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:empty-state', message: 'Showing empty state - no student profile', data: { userId: user.id, userRole: user.role }, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A' }) }).catch(() => { });
-    // #endregion
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.title}>Meu Perfil</Text>
-        <View style={styles.emptyState}>
-          <Ionicons name="person-add-outline" size={64} color={colors.text.tertiary} />
-          <Text style={styles.emptyTitle}>Complete seu cadastro</Text>
-          <Text style={styles.emptyText}>
-            Para começar a usar o BORA, você precisa completar seu cadastro.
-          </Text>
-          <TouchableOpacity
-            style={styles.createButton}
-            onPress={() => {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/005159fb-805d-4670-9445-24b2105055a1', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location: 'profile.tsx:onboarding-button', message: 'Onboarding button pressed', data: {}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E' }) }).catch(() => { });
-              // #endregion
-              router.push("/screens/onboarding/OnboardingFlow");
-            }}
-          >
-            <Text style={styles.createButtonText}>Começar Cadastro</Text>
-          </TouchableOpacity>
-        </View>
+      <ScrollView contentContainerStyle={{ padding: 24, flexGrow: 1, justifyContent: 'center', alignItems: 'center' }} backgroundColor="$background">
+        <YStack ai="center" space="$6" maxWidth={400} w="100%">
+          <Ionicons name="person-add-outline" size={64} color={theme.color.val} style={{ opacity: 0.5 }} />
+          <YStack ai="center" space="$2">
+            <Text fontSize="$6" fontWeight="bold">Complete seu cadastro</Text>
+            <Text textAlign="center" opacity={0.7} lineHeight={24}>Para começar a usar o BORA, você precisa completar seu cadastro.</Text>
+          </YStack>
+          <Button onPress={() => router.push("/screens/onboarding/OnboardingFlow")} size="$5" fullWidth>
+            Começar Cadastro
+          </Button>
+        </YStack>
       </ScrollView>
     );
   }
@@ -59,270 +43,136 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Meu Perfil</Text>
+    <ScrollView contentContainerStyle={{ paddingBottom: 40 }} backgroundColor="$background">
+      <YStack pt="$8" px="$4" pb="$4">
+        <Text fontSize="$8" fontWeight="bold" mb="$4">Meu Perfil</Text>
 
-      {/* Profile Completeness */}
-      {completeness && (
-        <ProfileCompleteness
-          isComplete={completeness.isComplete}
-          missingFields={completeness.missingFields}
-          totalFields={7}
-        />
-      )}
-
-      {/* Avatar */}
-      <View style={styles.avatarContainer}>
-        {user?.image ? (
-          <Image source={{ uri: user.image }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitial}>
-              {user?.name?.charAt(0) || "U"}
-            </Text>
-          </View>
+        {/* Profile Completeness */}
+        {completeness && (
+          <YStack mb="$6">
+            <ProfileCompleteness
+              isComplete={completeness.isComplete}
+              missingFields={completeness.missingFields}
+              totalFields={7}
+            />
+          </YStack>
         )}
-      </View>
 
-      {/* Dados Pessoais */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Dados Pessoais</Text>
-        <View style={styles.card}>
-          <Text style={styles.label}>Nome</Text>
-          <Text style={styles.value}>{user?.name || "Usuário BORA"}</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={styles.label}>E-mail</Text>
-          <Text style={styles.value}>{user?.email || "usuario@bora.com"}</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={styles.label}>Telefone</Text>
-          <Text style={styles.value}>{user?.phone || "Não informado"}</Text>
-        </View>
-        {student && (
-          <>
-            <View style={styles.card}>
-              <Text style={styles.label}>CPF</Text>
-              <Text style={styles.value}>{formatCPF(student.cpf)}</Text>
-            </View>
-            <View style={styles.card}>
-              <Text style={styles.label}>Data de Nascimento</Text>
-              <Text style={styles.value}>{formatDate(student.dateOfBirth)}</Text>
-            </View>
-          </>
-        )}
-      </View>
-
-      {/* Endereço */}
-      {student && (student.address || student.city || student.state) && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Endereço</Text>
-          {student.address && (
-            <View style={styles.card}>
-              <Text style={styles.label}>Endereço</Text>
-              <Text style={styles.value}>{student.address}</Text>
-            </View>
-          )}
-          <View style={styles.card}>
-            <Text style={styles.label}>Cidade / Estado</Text>
-            <Text style={styles.value}>
-              {student.city || "Não informado"}
-              {student.city && student.state ? " / " : ""}
-              {student.state || ""}
-            </Text>
-          </View>
-          {student.zipCode && (
-            <View style={styles.card}>
-              <Text style={styles.label}>CEP</Text>
-              <Text style={styles.value}>
-                {student.zipCode.replace(/(\d{5})(\d{3})/, "$1-$2")}
+        {/* Avatar */}
+        <YStack ai="center" mb="$6">
+          <Avatar size="$10" circular>
+            <AvatarImage src={user?.image || undefined} />
+            <AvatarFallback backgroundColor="$muted">
+              <Text fontSize="$6" fontWeight="bold">
+                {user?.name?.charAt(0) || "U"}
               </Text>
-            </View>
+            </AvatarFallback>
+          </Avatar>
+          <Text mt="$3" fontSize="$5" fontWeight="bold">{user?.name || "Usuário BORA"}</Text>
+          <Text fontSize="$3" opacity={0.6}>{user?.email || "usuario@bora.com"}</Text>
+        </YStack>
+
+        {/* Dados Pessoais */}
+        <YStack space="$4" mb="$6">
+          <Text fontSize="$4" fontWeight="600" opacity={0.7} ml="$1">Dados Pessoais</Text>
+
+          <Card bordered>
+            <YStack space="$4">
+              <InfoRow label="Nome" value={user?.name || "Usuário BORA"} />
+              <InfoRow label="E-mail" value={user?.email || "usuario@bora.com"} />
+              <InfoRow label="Telefone" value={user?.phone || "Não informado"} />
+              {student && (
+                <>
+                  <InfoRow label="CPF" value={formatCPF(student.cpf)} />
+                  <InfoRow label="Data de Nascimento" value={formatDate(student.dateOfBirth)} />
+                </>
+              )}
+            </YStack>
+          </Card>
+        </YStack>
+
+        {/* Endereço */}
+        {student && (student.address || student.city || student.state) && (
+          <YStack space="$4" mb="$6">
+            <Text fontSize="$4" fontWeight="600" opacity={0.7} ml="$1">Endereço</Text>
+            <Card bordered>
+              <YStack space="$4">
+                {student.address && <InfoRow label="Endereço" value={student.address} />}
+                <InfoRow
+                  label="Cidade / Estado"
+                  value={`${student.city || "Não informado"} ${student.city && student.state ? "/" : ""} ${student.state || ""}`}
+                />
+                {student.zipCode && <InfoRow label="CEP" value={student.zipCode.replace(/(\d{5})(\d{3})/, "$1-$2")} />}
+              </YStack>
+            </Card>
+          </YStack>
+        )}
+
+        {/* Progresso */}
+        {student && (
+          <YStack space="$4" mb="$6">
+            <Text fontSize="$4" fontWeight="600" opacity={0.7} ml="$1">Progresso</Text>
+            <XStack space="$4">
+              <Card flex={1} bordered ai="center" jc="center" py="$4">
+                <Text fontSize="$7" fontWeight="bold" color="$primary">{student.points || 0}</Text>
+                <Text fontSize="$3" opacity={0.6}>Pontos</Text>
+              </Card>
+              <Card flex={1} bordered ai="center" jc="center" py="$4">
+                <Text fontSize="$7" fontWeight="bold" color="$primary">{student.level || 1}</Text>
+                <Text fontSize="$3" opacity={0.6}>Nível</Text>
+              </Card>
+            </XStack>
+          </YStack>
+        )}
+
+        {/* Buttons */}
+        <YStack space="$3" mt="$2">
+          {!completeness?.isComplete && (
+            <Button
+              backgroundColor="$green9"
+              onPress={() => router.push("/screens/onboarding/OnboardingFlow")}
+              icon={<Ionicons name="checkmark-circle" size={20} color="white" />}
+            >
+              Completar Cadastro
+            </Button>
           )}
-        </View>
-      )}
 
-      {/* Gamificação */}
-      {student && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Progresso</Text>
-          <View style={styles.card}>
-            <Text style={styles.label}>Pontos</Text>
-            <Text style={styles.value}>{student.points || 0} pontos</Text>
-          </View>
-          <View style={styles.card}>
-            <Text style={styles.label}>Nível</Text>
-            <Text style={styles.value}>Nível {student.level || 1}</Text>
-          </View>
-        </View>
-      )}
+          <Button
+            onPress={() => router.push("/screens/editProfile")}
+            icon={<Ionicons name="create-outline" size={20} color="white" />}
+          >
+            Editar Perfil
+          </Button>
 
-      {/* Botões */}
-      {!completeness?.isComplete && (
-        <TouchableOpacity
-          style={[styles.button, styles.completeButton]}
-          onPress={() => router.push("/screens/onboarding/OnboardingFlow")}
-        >
-          <Ionicons name="checkmark-circle" size={20} color={colors.text.white} />
-          <Text style={styles.buttonText}>Completar Cadastro</Text>
-        </TouchableOpacity>
-      )}
+          <Button
+            variant="outline"
+            borderColor="$red8"
+            color="$red10"
+            onPress={() => {
+              Alert.alert("Sair", "Tem certeza que deseja sair?", [
+                { text: "Cancelar", style: "cancel" },
+                {
+                  text: "Sair", style: "destructive", onPress: () => {
+                    router.replace("/login");
+                  }
+                },
+              ]);
+            }}
+            icon={<Ionicons name="log-out-outline" size={20} color="red" />}
+            pressStyle={{ backgroundColor: '$red2', borderColor: '$red8' }}
+          >
+            Sair
+          </Button>
+        </YStack>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => router.push("/screens/editProfile")}
-      >
-        <Ionicons name="create-outline" size={20} color={colors.text.white} />
-        <Text style={styles.buttonText}>Editar Perfil</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.button, styles.logoutButton]}
-        onPress={() => {
-          Alert.alert("Sair", "Tem certeza que deseja sair?", [
-            { text: "Cancelar", style: "cancel" },
-            {
-              text: "Sair", style: "destructive", onPress: () => {
-                // Redirecionar para login
-                router.replace("/login");
-              }
-            },
-          ]);
-        }}
-      >
-        <Ionicons name="log-out-outline" size={20} color={colors.text.primary} />
-        <Text style={styles.logoutText}>Sair</Text>
-      </TouchableOpacity>
-
-      <View style={{ height: spacing["4xl"] }} />
+      </YStack>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
-  contentContainer: {
-    padding: spacing["2xl"],
-    paddingBottom: spacing["4xl"],
-  },
-  title: {
-    fontSize: typography.fontSize["2xl"],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.xl,
-  },
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: spacing["4xl"],
-    paddingHorizontal: spacing.xl,
-  },
-  emptyTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-    marginTop: spacing.xl,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.fontSize.base,
-    color: colors.text.secondary,
-    textAlign: "center",
-    marginBottom: spacing["2xl"],
-  },
-  createButton: {
-    backgroundColor: colors.background.brandPrimary,
-    padding: spacing.xl,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing["2xl"],
-  },
-  createButtonText: {
-    color: colors.text.white,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  avatarContainer: {
-    alignItems: "center",
-    marginBottom: spacing["2xl"],
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: radius.full,
-    backgroundColor: colors.background.tertiary,
-  },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: radius.full,
-    backgroundColor: colors.background.tertiary,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: colors.border.secondary,
-  },
-  avatarInitial: {
-    fontSize: typography.fontSize["4xl"],
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-  },
-  section: {
-    marginBottom: spacing["2xl"],
-  },
-  sectionTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
-  card: {
-    backgroundColor: colors.background.secondary,
-    padding: spacing.xl,
-    borderRadius: radius.lg,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border.secondary,
-  },
-  label: {
-    fontSize: typography.fontSize.xs,
-    color: colors.text.tertiary,
-    marginBottom: spacing.xs,
-    fontWeight: typography.fontWeight.medium,
-  },
-  value: {
-    fontSize: typography.fontSize.base,
-    color: colors.text.primary,
-    fontWeight: typography.fontWeight.medium,
-  },
-  button: {
-    backgroundColor: colors.background.brandPrimary,
-    padding: spacing.xl,
-    borderRadius: radius.lg,
-    alignItems: "center",
-    marginTop: spacing.xl,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: spacing.sm,
-  },
-  completeButton: {
-    backgroundColor: colors.background.success,
-  },
-  buttonText: {
-    color: colors.text.white,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-  },
-  logoutButton: {
-    backgroundColor: colors.background.secondary,
-    borderWidth: 1,
-    borderColor: colors.border.primary,
-  },
-  logoutText: {
-    color: colors.text.primary,
-    fontSize: typography.fontSize.base,
-    fontWeight: typography.fontWeight.semibold,
-  },
-});
+const InfoRow = ({ label, value }: { label: string, value: string }) => (
+  <YStack>
+    <Text fontSize="$2" opacity={0.5} mb={2} textTransform="uppercase">{label}</Text>
+    <Text fontSize="$4" fontWeight="500">{value}</Text>
+  </YStack>
+)

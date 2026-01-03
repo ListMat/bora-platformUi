@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { trpc } from '@/lib/trpc';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 interface User {
     id: string;
@@ -22,6 +22,30 @@ interface AuthContextData {
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
+// Storage helper que funciona em web e native
+const storage = {
+    async getItem(key: string): Promise<string | null> {
+        if (Platform.OS === 'web') {
+            return localStorage.getItem(key);
+        }
+        return await SecureStore.getItemAsync(key);
+    },
+    async setItem(key: string, value: string): Promise<void> {
+        if (Platform.OS === 'web') {
+            localStorage.setItem(key, value);
+        } else {
+            await SecureStore.setItemAsync(key, value);
+        }
+    },
+    async deleteItem(key: string): Promise<void> {
+        if (Platform.OS === 'web') {
+            localStorage.removeItem(key);
+        } else {
+            await SecureStore.deleteItemAsync(key);
+        }
+    }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +56,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         const loadStorageData = async () => {
             try {
-                const storedUser = await SecureStore.getItemAsync('bora.user');
+                const storedUser = await storage.getItem('bora.user');
                 if (storedUser) {
                     setUser(JSON.parse(storedUser));
                 }
@@ -54,20 +78,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // SIMULATION for MVP until backend is connected:
             if (email === 'fail') throw new Error('Falha simulada');
 
-            // Mock response
+            // Mock response - determina role baseado no email
+            const role = email.includes('instrutor') ? 'instructor' : 'student';
+            const name = email.includes('instrutor') ? 'Instrutor Mestre' : 'Aluno Teste Completo';
+
             const mockUser: User = {
-                id: '1',
-                name: 'Usuário Teste',
+                id: email.includes('instrutor') ? '2' : '1',
+                name,
                 email,
-                role: 'student', // or dynamic based on app?
+                role,
                 photo: null,
                 token: 'mock-jwt-token'
             };
 
             setUser(mockUser);
-            await SecureStore.setItemAsync('bora.user', JSON.stringify(mockUser));
+            await storage.setItem('bora.user', JSON.stringify(mockUser));
             if (mockUser.token) {
-                await SecureStore.setItemAsync('auth_token', mockUser.token);
+                await storage.setItem('auth_token', mockUser.token);
             }
 
             // Call API (will fail if route doesn't exist yet, so keeping commented or try/catch silent)
@@ -86,8 +113,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // ignore
         }
         setUser(null);
-        await SecureStore.deleteItemAsync('bora.user');
-        await SecureStore.deleteItemAsync('auth_token');
+        await storage.deleteItem('bora.user');
+        await storage.deleteItem('auth_token');
     };
 
     return (

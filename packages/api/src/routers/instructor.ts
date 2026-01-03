@@ -14,6 +14,21 @@ import {
 } from "../modules/stripeConnect";
 
 export const instructorRouter = router({
+  // Detalhes do instrutor por ID
+  getById: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const instructor = await ctx.prisma.instructor.findUnique({
+        where: { id: input.id },
+        include: {
+          user: { select: { id: true, name: true, image: true } },
+          vehicles: { where: { status: "ACTIVE" }, take: 1 },
+        },
+      });
+      if (!instructor) throw new Error("Instrutor não encontrado");
+      return instructor;
+    }),
+
   // Buscar instrutores próximos
   nearby: protectedProcedure
     .input(
@@ -52,11 +67,11 @@ export const instructorRouter = router({
         const R = 6371; // Raio da Terra em km
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
           Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
       };
 
@@ -266,8 +281,8 @@ export const instructorRouter = router({
       const extension = input.documentBase64.startsWith("data:application/pdf")
         ? "pdf"
         : input.documentBase64.startsWith("data:image/png")
-        ? "png"
-        : "jpg";
+          ? "png"
+          : "jpg";
 
       const filename =
         input.filename ||

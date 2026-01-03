@@ -9,6 +9,18 @@ import { StatusBar } from "expo-status-bar";
 import { useColorScheme, Platform } from "react-native";
 import { useNotifications } from "@/hooks/useNotifications";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { TamaguiProvider } from 'tamagui'
+import config from '../tamagui.config'
+
+// Storage helper que funciona em web e native
+const storage = {
+  async getItem(key: string): Promise<string | null> {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    return await SecureStore.getItemAsync(key);
+  }
+};
 
 export default function RootLayout() {
   // Detectar tema do sistema
@@ -32,9 +44,9 @@ export default function RootLayout() {
       transformer: superjson,
       links: [
         httpBatchLink({
-          url: process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api/trpc",
+          url: process.env.EXPO_PUBLIC_API_URL || (Platform.OS === 'android' ? "http://10.0.2.2:3000/api/trpc" : "http://localhost:3000/api/trpc"),
           async headers() {
-            const token = await SecureStore.getItemAsync("auth_token");
+            const token = await storage.getItem("auth_token");
             return {
               authorization: token ? `Bearer ${token}` : "",
             };
@@ -45,37 +57,47 @@ export default function RootLayout() {
   );
 
   return (
-    <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="screens/SolicitarAulaFlow"
-              options={{
-                title: "Solicitar Aula",
-                presentation: "fullScreenModal",
-              }}
-            />
-            <Stack.Screen
-              name="screens/onboarding/OnboardingFlow"
-              options={{
-                title: "Complete seu Cadastro",
-                presentation: "fullScreenModal",
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="screens/editProfile"
-              options={{
-                title: "Editar Perfil",
-                presentation: "card",
-              }}
-            />
-          </Stack>
-        </AuthProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <TamaguiProvider config={config} defaultTheme={colorScheme === 'dark' ? 'dark' : 'light'}>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="login" />
+              <Stack.Screen name="register/index" />
+              <Stack.Screen name="register/vehicle" />
+              <Stack.Screen name="forgot-password" />
+              <Stack.Screen name="success" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen
+                name="screens/SolicitarAulaFlow"
+                options={{
+                  title: "Solicitar Aula",
+                  presentation: "fullScreenModal",
+                  headerShown: true,
+                }}
+              />
+              <Stack.Screen
+                name="screens/onboarding/OnboardingFlow"
+                options={{
+                  title: "Complete seu Cadastro",
+                  presentation: "fullScreenModal",
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="screens/editProfile"
+                options={{
+                  title: "Editar Perfil",
+                  presentation: "card",
+                  headerShown: true,
+                }}
+              />
+            </Stack>
+          </AuthProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </TamaguiProvider>
   );
 }
