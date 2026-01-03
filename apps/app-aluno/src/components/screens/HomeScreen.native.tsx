@@ -32,9 +32,9 @@ const { width, height } = Dimensions.get("window");
 
 // Localização padrão (centro do Brasil - Brasília)
 const DEFAULT_LOCATION = {
-  latitude: -15.7942,
-  longitude: -47.8822,
-  zoomLevel: 10,
+  latitude: -19.9167,
+  longitude: -43.9345,
+  zoomLevel: 12,
 };
 
 export default function HomeScreen() {
@@ -249,6 +249,16 @@ export default function HomeScreen() {
             }
           ]}
         >
+          {/* Debug Info */}
+          <Marker coordinate={mapLocation} zIndex={999}>
+            <View style={{ backgroundColor: 'white', padding: 5, borderRadius: 5 }}>
+              <Text style={{ color: 'red', fontWeight: 'bold' }}>
+                Instructors: {instructors.length}
+                {'\n'}
+                Loading: {isLoading ? 'Yes' : 'No'}
+              </Text>
+            </View>
+          </Marker>
           {Platform.OS === 'android' && (
             <UrlTile
               urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -526,22 +536,7 @@ export default function HomeScreen() {
       />
 
       {/* Floating Action Button - Solicitar Aula */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => {
-          haptic.medium();
-          router.push({
-            pathname: "/screens/SolicitarAulaFlow",
-            params: { instructorId: selectedInstructor || undefined },
-          });
-        }}
-        activeOpacity={0.9}
-      >
-        <View style={styles.fabContent}>
-          <Ionicons name="add" size={28} color={colors.text.white} />
-          <Text style={styles.fabText}>Solicitar Aula</Text>
-        </View>
-      </TouchableOpacity>
+
     </View>
   );
 }

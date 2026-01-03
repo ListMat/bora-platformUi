@@ -41,7 +41,7 @@ export default function WebMap({ userLocation, instructors, onMarkerPress, selec
     // Coordenadas padrão (Brasília)
     const centerPosition = userLocation
         ? [userLocation.latitude, userLocation.longitude] as [number, number]
-        : [-15.7942, -47.8822] as [number, number];
+        : [-19.9167, -43.9345] as [number, number];
 
     // Verificar window para SSR
     if (typeof window === 'undefined') return null;

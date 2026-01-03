@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, protectedProcedure, instructorProcedure, adminProcedure } from "../trpc";
+import { router, protectedProcedure, instructorProcedure, adminProcedure, publicProcedure } from "../trpc";
 import { InstructorStatus } from "@bora/db";
 import { validateCPF, validateCNH } from "../utils/validators";
 import {
@@ -22,7 +22,7 @@ export const instructorRouter = router({
         where: { id: input.id },
         include: {
           user: { select: { id: true, name: true, image: true } },
-          vehicles: { where: { status: "ACTIVE" }, take: 1 },
+          vehicles: { where: { status: "active" }, take: 1 },
         },
       });
       if (!instructor) throw new Error("Instrutor não encontrado");
@@ -30,7 +30,7 @@ export const instructorRouter = router({
     }),
 
   // Buscar instrutores próximos
-  nearby: protectedProcedure
+  nearby: publicProcedure
     .input(
       z.object({
         latitude: z.number(),
@@ -52,7 +52,7 @@ export const instructorRouter = router({
           user: true,
           vehicles: {
             where: {
-              status: "ACTIVE",
+              status: "active",
             },
             take: 1,
             orderBy: {
@@ -94,7 +94,7 @@ export const instructorRouter = router({
     }),
 
   // Listar instrutores disponíveis
-  list: protectedProcedure
+  list: publicProcedure
     .input(
       z.object({
         latitude: z.number().optional(),

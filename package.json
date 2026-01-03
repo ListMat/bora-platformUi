@@ -16,6 +16,9 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
   },
   "devDependencies": {
+    "@tamagui/config": "^1.142.0",
+    "@tamagui/core": "^1.142.0",
+    "@tamagui/web": "^1.142.0",
     "@turbo/gen": "^2.3.3",
     "eslint": "^8.57.0",
     "husky": "^8.0.3",
@@ -29,5 +32,9 @@
     "node": ">=18.17.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@8.15.0"
+  "packageManager": "pnpm@8.15.0",
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
 }
