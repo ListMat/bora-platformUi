@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Car, Plus, Trash2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { api } from "@/utils/api";
 
 // Dados de veículos (simplificado - em produção viria de uma API)
 const BRANDS = [
@@ -72,6 +73,8 @@ export default function VeiculosPage() {
     const [error, setError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const createVehicle = api.vehicle.create.useMutation();
+
     const addVehicle = () => {
         setVehicles([
             ...vehicles,
@@ -126,13 +129,23 @@ export default function VeiculosPage() {
         setError("");
 
         try {
-            // TODO: Salvar veículos no backend
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            // Salvar cada veículo no banco
+            for (const vehicle of vehicles) {
+                await createVehicle.mutateAsync({
+                    brand: vehicle.brand,
+                    model: vehicle.model,
+                    year: parseInt(vehicle.year),
+                    color: vehicle.color,
+                    transmission: vehicle.transmission as "MANUAL" | "AUTOMATICO" | "CVT" | "SEMI_AUTOMATICO",
+                    plateLastFour: vehicle.plateLastFour,
+                });
+            }
 
             // Redirecionar para criação do primeiro plano
             router.push("/instructor/onboarding/first-plan");
         } catch (err) {
             setError("Erro ao salvar veículos. Tente novamente.");
+            console.error(err);
         } finally {
             setIsSubmitting(false);
         }
@@ -305,17 +318,18 @@ export default function VeiculosPage() {
                                             >
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Selecione a transmissão">
-                                                        {vehicle.transmission || "Selecione a transmissão"}
+                                                        {vehicle.transmission === "MANUAL" && "Manual"}
+                                                        {vehicle.transmission === "AUTOMATICO" && "Automático"}
+                                                        {vehicle.transmission === "CVT" && "CVT"}
+                                                        {vehicle.transmission === "SEMI_AUTOMATICO" && "Automatizado"}
+                                                        {!vehicle.transmission && "Selecione a transmissão"}
                                                     </SelectValue>
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="manual">Manual</SelectItem>
-                                                    <SelectItem value="automatic">Automático</SelectItem>
-                                                    <SelectItem value="cvt">CVT</SelectItem>
-                                                    <SelectItem value="automatizado">Automatizado</SelectItem>
-                                                    <SelectItem value="sequencial">Sequencial</SelectItem>
-                                                    <SelectItem value="dual-clutch">Dual-clutch</SelectItem>
-                                                    <SelectItem value="eletrico">Elétrico</SelectItem>
+                                                    <SelectItem value="MANUAL">Manual</SelectItem>
+                                                    <SelectItem value="AUTOMATICO">Automático</SelectItem>
+                                                    <SelectItem value="CVT">CVT</SelectItem>
+                                                    <SelectItem value="SEMI_AUTOMATICO">Automatizado</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
