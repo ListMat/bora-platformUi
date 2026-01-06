@@ -1,12 +1,11 @@
 import * as React from "react"
-import { Check } from "lucide-react"
 
-export interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
     onCheckedChange?: (checked: boolean) => void
 }
 
 const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
-    ({ className, onCheckedChange, ...props }, ref) => {
+    ({ className, onCheckedChange, checked, defaultChecked, ...props }, ref) => {
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             if (onCheckedChange) {
                 onCheckedChange(e.target.checked)
@@ -21,13 +20,24 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
                 <input
                     type="checkbox"
                     ref={ref}
-                    className="peer sr-only"
+                    className="peer h-5 w-5 cursor-pointer appearance-none rounded border-2 border-primary bg-background transition-all checked:bg-primary checked:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    checked={checked}
+                    defaultChecked={defaultChecked}
                     onChange={handleChange}
                     {...props}
                 />
-                <div className={`h-4 w-4 shrink-0 rounded-sm border border-primary ring-offset-background peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:bg-primary peer-checked:text-primary-foreground cursor-pointer ${className || ""}`}>
-                    <Check className="h-4 w-4 hidden peer-checked:block text-white" />
-                </div>
+                {/* Check icon - usando Unicode checkmark */}
+                <svg
+                    className="pointer-events-none absolute left-0 top-0 h-5 w-5 p-0.5 text-white opacity-0 transition-opacity peer-checked:opacity-100"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    <path
+                        d="M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z"
+                        fill="currentColor"
+                    />
+                </svg>
             </div>
         )
     }
