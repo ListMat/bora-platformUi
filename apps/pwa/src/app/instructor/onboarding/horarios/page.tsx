@@ -111,7 +111,7 @@ export default function HorariosPage() {
         }
 
         // TODO: Salvar horários e localização
-        router.push("/instructor/cadastro/veiculos");
+        router.push("/instructor/onboarding/veiculos");
     };
 
     const totalHours = getTotalHours();

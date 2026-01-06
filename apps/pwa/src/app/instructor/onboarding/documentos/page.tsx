@@ -66,7 +66,7 @@ export default function DocumentosPage() {
             await new Promise((resolve) => setTimeout(resolve, 2000));
 
             // Redirecionar para próxima etapa
-            router.push("/instructor/cadastro/horarios");
+            router.push("/instructor/onboarding/horarios");
         } catch (err) {
             setError("Erro ao enviar documentos. Tente novamente.");
         } finally {

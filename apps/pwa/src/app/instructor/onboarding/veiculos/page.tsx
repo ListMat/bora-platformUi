@@ -126,8 +126,8 @@ export default function VeiculosPage() {
             // TODO: Salvar veículos no backend
             await new Promise((resolve) => setTimeout(resolve, 1500));
 
-            // Redirecionar para dashboard ou página de sucesso
-            router.push("/instructor/dashboard");
+            // Redirecionar para criação do primeiro plano
+            router.push("/instructor/onboarding/first-plan");
         } catch (err) {
             setError("Erro ao salvar veículos. Tente novamente.");
         } finally {
