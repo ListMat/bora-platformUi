@@ -52,6 +52,7 @@ type Vehicle = {
     model: string;
     year: string;
     color: string;
+    transmission: string;
     plateLastFour: string;
 };
 
@@ -64,6 +65,7 @@ export default function VeiculosPage() {
             model: "",
             year: "",
             color: "",
+            transmission: "",
             plateLastFour: "",
         },
     ]);
@@ -79,6 +81,7 @@ export default function VeiculosPage() {
                 model: "",
                 year: "",
                 color: "",
+                transmission: "",
                 plateLastFour: "",
             },
         ]);
@@ -103,7 +106,7 @@ export default function VeiculosPage() {
 
     const validateVehicles = () => {
         for (const vehicle of vehicles) {
-            if (!vehicle.brand || !vehicle.model || !vehicle.year || !vehicle.color || !vehicle.plateLastFour) {
+            if (!vehicle.brand || !vehicle.model || !vehicle.year || !vehicle.color || !vehicle.transmission || !vehicle.plateLastFour) {
                 return false;
             }
             if (vehicle.plateLastFour.length !== 4) {
@@ -287,6 +290,27 @@ export default function VeiculosPage() {
                                                             {color}
                                                         </SelectItem>
                                                     ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Transmissão */}
+                                        <div className="space-y-2">
+                                            <Label>Transmissão *</Label>
+                                            <Select
+                                                value={vehicle.transmission}
+                                                onValueChange={(value) =>
+                                                    updateVehicle(vehicle.id, "transmission", value)
+                                                }
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Selecione a transmissão">
+                                                        {vehicle.transmission || "Selecione a transmissão"}
+                                                    </SelectValue>
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="manual">Manual</SelectItem>
+                                                    <SelectItem value="automatic">Automático</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
