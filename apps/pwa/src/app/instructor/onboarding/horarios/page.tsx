@@ -8,17 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/chip";
-import { Clock, AlertCircle, MapPin } from "lucide-react";
+import { Clock, AlertCircle, MapPin, Info } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const DAYS_OF_WEEK = [
-    { value: 0, label: "Dom" },
-    { value: 1, label: "Seg" },
-    { value: 2, label: "Ter" },
-    { value: 3, label: "Qua" },
-    { value: 4, label: "Qui" },
-    { value: 5, label: "Sex" },
-    { value: 6, label: "Sáb" },
+    { value: 0, label: "Dom", fullLabel: "Domingo" },
+    { value: 1, label: "Seg", fullLabel: "Segunda" },
+    { value: 2, label: "Ter", fullLabel: "Terça" },
+    { value: 3, label: "Qua", fullLabel: "Quarta" },
+    { value: 4, label: "Qui", fullLabel: "Quinta" },
+    { value: 5, label: "Sex", fullLabel: "Sexta" },
+    { value: 6, label: "Sáb", fullLabel: "Sábado" },
 ];
 
 const TIME_SLOTS = [
@@ -29,12 +29,11 @@ const TIME_SLOTS = [
 ];
 
 type Schedule = {
-    [key: number]: string[]; // day: ["06:00", "06:30", ...]
+    [key: number]: { [key: string]: boolean }; // day: { "06:00": true, ... }
 };
 
 export default function HorariosPage() {
     const router = useRouter();
-    const [selectedDay, setSelectedDay] = useState<number>(1); // Segunda por padrão
     const [schedule, setSchedule] = useState<Schedule>({});
     const [cep, setCep] = useState("");
     const [address, setAddress] = useState({
@@ -46,24 +45,25 @@ export default function HorariosPage() {
     const [loadingCep, setLoadingCep] = useState(false);
     const [error, setError] = useState("");
 
-    const toggleTimeSlot = (time: string) => {
+    const toggleTimeSlot = (day: number, time: string) => {
         setSchedule((prev) => {
-            const daySlots = prev[selectedDay] || [];
-            const newSlots = daySlots.includes(time)
-                ? daySlots.filter((t) => t !== time)
-                : [...daySlots, time].sort();
+            const daySchedule = prev[day] || {};
+            const newDaySchedule = {
+                ...daySchedule,
+                [time]: !daySchedule[time],
+            };
 
             return {
                 ...prev,
-                [selectedDay]: newSlots,
+                [day]: newDaySchedule,
             };
         });
     };
 
     const getTotalHours = () => {
         let total = 0;
-        Object.values(schedule).forEach((slots) => {
-            total += slots.length * 0.5; // Cada slot = 30 min = 0.5h
+        Object.values(schedule).forEach((daySchedule) => {
+            total += Object.values(daySchedule).filter(Boolean).length * 0.5;
         });
         return total;
     };
@@ -115,13 +115,12 @@ export default function HorariosPage() {
     };
 
     const totalHours = getTotalHours();
-    const daySlots = schedule[selectedDay] || [];
 
     return (
         <div className="min-h-screen bg-background text-foreground">
             <AppNavbar />
 
-            <main className="max-w-4xl mx-auto px-6 py-8">
+            <main className="max-w-7xl mx-auto px-6 py-8">
                 {/* Progress Bar */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">
@@ -180,104 +179,111 @@ export default function HorariosPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Horários */}
+                    {/* Calendário de Horários */}
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center gap-2">
-                                <Clock className="w-5 h-5 text-primary" />
-                                <CardTitle>Selecione seus horários</CardTitle>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-5 h-5 text-primary" />
+                                    <CardTitle>Selecione seus horários</CardTitle>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-bold">
+                                        {totalHours}h
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                        {totalHours >= 10 ? "✓ Mínimo atingido" : `Faltam ${(10 - totalHours).toFixed(1)}h`}
+                                    </div>
+                                </div>
                             </div>
                             <CardDescription>
-                                Escolha os dias e horários que você está disponível (mínimo 10h/semana)
+                                Clique nas células para selecionar os horários disponíveis (mínimo 10h/semana)
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent>
                             {error && (
-                                <Alert variant="destructive">
+                                <Alert variant="destructive" className="mb-4">
                                     <AlertCircle className="h-4 w-4" />
                                     <AlertDescription>{error}</AlertDescription>
                                 </Alert>
                             )}
 
-                            {/* Indicador de horas */}
-                            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Total selecionado</p>
-                                    <p className="text-2xl font-bold">
-                                        {totalHours}h <span className="text-sm font-normal text-muted-foreground">/ semana</span>
-                                    </p>
-                                </div>
-                                {totalHours >= 10 ? (
-                                    <Badge variant="default">✓ Mínimo atingido</Badge>
-                                ) : (
-                                    <Badge variant="outline">Faltam {(10 - totalHours).toFixed(1)}h</Badge>
-                                )}
-                            </div>
-
-                            {/* Seletor de dia */}
-                            <div>
-                                <Label className="mb-3 block">Dia da semana</Label>
-                                <div className="flex gap-2 overflow-x-auto pb-2">
-                                    {DAYS_OF_WEEK.map((day) => {
-                                        const hasSlots = (schedule[day.value] || []).length > 0;
-                                        return (
-                                            <button
+                            {/* Calendário Grid */}
+                            <div className="overflow-x-auto">
+                                <div className="inline-block min-w-full">
+                                    {/* Header dos dias */}
+                                    <div className="grid grid-cols-8 gap-1 mb-2">
+                                        <div className="text-xs font-medium text-muted-foreground p-2">
+                                            Horário
+                                        </div>
+                                        {DAYS_OF_WEEK.map((day) => (
+                                            <div
                                                 key={day.value}
-                                                onClick={() => setSelectedDay(day.value)}
-                                                className={`
-                                                    px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all
-                                                    ${selectedDay === day.value
-                                                        ? "bg-primary text-primary-foreground"
-                                                        : hasSlots
-                                                            ? "bg-primary/10 text-primary border border-primary"
-                                                            : "bg-muted hover:bg-muted/80"
-                                                    }
-                                                `}
+                                                className="text-center p-2 bg-muted rounded-t-lg"
                                             >
-                                                {day.label}
-                                                {hasSlots && (
-                                                    <span className="ml-1 text-xs">
-                                                        ({schedule[day.value].length})
-                                                    </span>
-                                                )}
-                                            </button>
-                                        );
-                                    })}
+                                                <div className="font-semibold text-sm">{day.label}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {Object.values(schedule[day.value] || {}).filter(Boolean).length * 0.5}h
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Grid de horários */}
+                                    <div className="space-y-1">
+                                        {TIME_SLOTS.map((time) => (
+                                            <div key={time} className="grid grid-cols-8 gap-1">
+                                                {/* Coluna de horário */}
+                                                <div className="text-xs font-medium text-muted-foreground p-2 flex items-center">
+                                                    {time}
+                                                </div>
+
+                                                {/* Células de cada dia */}
+                                                {DAYS_OF_WEEK.map((day) => {
+                                                    const isSelected = schedule[day.value]?.[time];
+                                                    return (
+                                                        <button
+                                                            key={`${day.value}-${time}`}
+                                                            onClick={() => toggleTimeSlot(day.value, time)}
+                                                            className={`
+                                                                h-10 rounded transition-all border
+                                                                ${isSelected
+                                                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                                                    : "bg-background hover:bg-muted border-border"
+                                                                }
+                                                            `}
+                                                            title={`${day.fullLabel} às ${time}`}
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Seletor de horário */}
-                            <div>
-                                <Label className="mb-3 block">
-                                    Horários disponíveis - {DAYS_OF_WEEK[selectedDay].label}
-                                </Label>
-                                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-96 overflow-y-auto p-2">
-                                    {TIME_SLOTS.map((time) => {
-                                        const isSelected = daySlots.includes(time);
-                                        return (
-                                            <button
-                                                key={time}
-                                                onClick={() => toggleTimeSlot(time)}
-                                                className={`
-                                                    px-3 py-2 rounded-lg text-sm font-medium transition-all
-                                                    ${isSelected
-                                                        ? "bg-primary text-primary-foreground shadow-md"
-                                                        : "bg-muted hover:bg-muted/80"
-                                                    }
-                                                `}
-                                            >
-                                                {time}
-                                            </button>
-                                        );
-                                    })}
+                            {/* Legenda */}
+                            <div className="mt-6 flex items-center gap-6 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 bg-primary rounded border border-primary"></div>
+                                    <span className="text-muted-foreground">Disponível</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-4 h-4 bg-background rounded border border-border"></div>
+                                    <span className="text-muted-foreground">Indisponível</span>
                                 </div>
                             </div>
 
                             {/* Dica */}
-                            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                                <p className="text-sm">
-                                    💡 <strong>Dica:</strong> Quanto mais horários disponíveis, mais alunos você pode atender
-                                </p>
+                            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg flex gap-3">
+                                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                                <div className="text-sm">
+                                    <p className="font-medium mb-1">💡 Dica para aumentar seus ganhos</p>
+                                    <p className="text-muted-foreground">
+                                        Quanto mais horários disponíveis, mais alunos você pode atender.
+                                        Instrutores com 20h+ semanais ganham até 2x mais!
+                                    </p>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
