@@ -8,17 +8,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/chip";
-import { Clock, AlertCircle, MapPin, Info } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Clock, AlertCircle, MapPin, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const DAYS_OF_WEEK = [
-    { value: 0, label: "Dom", fullLabel: "Domingo" },
-    { value: 1, label: "Seg", fullLabel: "Segunda" },
-    { value: 2, label: "Ter", fullLabel: "Terça" },
-    { value: 3, label: "Qua", fullLabel: "Quarta" },
-    { value: 4, label: "Qui", fullLabel: "Quinta" },
-    { value: 5, label: "Sex", fullLabel: "Sexta" },
-    { value: 6, label: "Sáb", fullLabel: "Sábado" },
+    { value: "0", label: "Domingo" },
+    { value: "1", label: "Segunda-feira" },
+    { value: "2", label: "Terça-feira" },
+    { value: "3", label: "Quarta-feira" },
+    { value: "4", label: "Quinta-feira" },
+    { value: "5", label: "Sexta-feira" },
+    { value: "6", label: "Sábado" },
 ];
 
 const TIME_SLOTS = [
@@ -28,13 +35,18 @@ const TIME_SLOTS = [
     "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30",
 ];
 
-type Schedule = {
-    [key: number]: { [key: string]: boolean }; // day: { "06:00": true, ... }
+type ScheduleSlot = {
+    id: string;
+    day: string;
+    startTime: string;
+    endTime: string;
 };
 
 export default function HorariosPage() {
     const router = useRouter();
-    const [schedule, setSchedule] = useState<Schedule>({});
+    const [scheduleSlots, setScheduleSlots] = useState<ScheduleSlot[]>([
+        { id: "1", day: "", startTime: "", endTime: "" },
+    ]);
     const [cep, setCep] = useState("");
     const [address, setAddress] = useState({
         street: "",
@@ -45,25 +57,38 @@ export default function HorariosPage() {
     const [loadingCep, setLoadingCep] = useState(false);
     const [error, setError] = useState("");
 
-    const toggleTimeSlot = (day: number, time: string) => {
-        setSchedule((prev) => {
-            const daySchedule = prev[day] || {};
-            const newDaySchedule = {
-                ...daySchedule,
-                [time]: !daySchedule[time],
-            };
+    const addScheduleSlot = () => {
+        setScheduleSlots([
+            ...scheduleSlots,
+            { id: Date.now().toString(), day: "", startTime: "", endTime: "" },
+        ]);
+    };
 
-            return {
-                ...prev,
-                [day]: newDaySchedule,
-            };
-        });
+    const removeScheduleSlot = (id: string) => {
+        if (scheduleSlots.length === 1) {
+            setError("Você precisa ter pelo menos 1 horário cadastrado");
+            return;
+        }
+        setScheduleSlots(scheduleSlots.filter((slot) => slot.id !== id));
+        setError("");
+    };
+
+    const updateScheduleSlot = (id: string, field: keyof ScheduleSlot, value: string) => {
+        setScheduleSlots(
+            scheduleSlots.map((slot) =>
+                slot.id === id ? { ...slot, [field]: value } : slot
+            )
+        );
     };
 
     const getTotalHours = () => {
         let total = 0;
-        Object.values(schedule).forEach((daySchedule) => {
-            total += Object.values(daySchedule).filter(Boolean).length * 0.5;
+        scheduleSlots.forEach((slot) => {
+            if (slot.startTime && slot.endTime) {
+                const start = parseInt(slot.startTime.split(":")[0]) * 2 + parseInt(slot.startTime.split(":")[1]) / 30;
+                const end = parseInt(slot.endTime.split(":")[0]) * 2 + parseInt(slot.endTime.split(":")[1]) / 30;
+                total += (end - start) * 0.5;
+            }
         });
         return total;
     };
@@ -97,8 +122,26 @@ export default function HorariosPage() {
         }
     };
 
+    const validateSchedules = () => {
+        for (const slot of scheduleSlots) {
+            if (!slot.day || !slot.startTime || !slot.endTime) {
+                return false;
+            }
+            // Validar se horário final é maior que inicial
+            if (slot.startTime >= slot.endTime) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     const handleSubmit = () => {
         const totalHours = getTotalHours();
+
+        if (!validateSchedules()) {
+            setError("Preencha todos os horários corretamente");
+            return;
+        }
 
         if (totalHours < 10) {
             setError("Selecione pelo menos 10 horas por semana");
@@ -115,12 +158,13 @@ export default function HorariosPage() {
     };
 
     const totalHours = getTotalHours();
+    const isValid = validateSchedules() && totalHours >= 10 && address.city;
 
     return (
         <div className="min-h-screen bg-background text-foreground">
             <AppNavbar />
 
-            <main className="max-w-7xl mx-auto px-6 py-8">
+            <main className="max-w-4xl mx-auto px-6 py-8">
                 {/* Progress Bar */}
                 <div className="mb-8">
                     <div className="flex items-center justify-between mb-2">
@@ -179,7 +223,7 @@ export default function HorariosPage() {
                         </CardContent>
                     </Card>
 
-                    {/* Calendário de Horários */}
+                    {/* Horários */}
                     <Card>
                         <CardHeader>
                             <div className="flex items-center justify-between">
@@ -189,7 +233,7 @@ export default function HorariosPage() {
                                 </div>
                                 <div className="text-right">
                                     <div className="text-2xl font-bold">
-                                        {totalHours}h
+                                        {totalHours.toFixed(1)}h
                                     </div>
                                     <div className="text-xs text-muted-foreground">
                                         {totalHours >= 10 ? "✓ Mínimo atingido" : `Faltam ${(10 - totalHours).toFixed(1)}h`}
@@ -197,93 +241,122 @@ export default function HorariosPage() {
                                 </div>
                             </div>
                             <CardDescription>
-                                Clique nas células para selecionar os horários disponíveis (mínimo 10h/semana)
+                                Adicione os dias e horários que você está disponível (mínimo 10h/semana)
                             </CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
                             {error && (
-                                <Alert variant="destructive" className="mb-4">
+                                <Alert variant="destructive">
                                     <AlertCircle className="h-4 w-4" />
                                     <AlertDescription>{error}</AlertDescription>
                                 </Alert>
                             )}
 
-                            {/* Calendário Grid */}
-                            <div className="overflow-x-auto">
-                                <div className="inline-block min-w-full">
-                                    {/* Header dos dias */}
-                                    <div className="grid grid-cols-8 gap-1 mb-2">
-                                        <div className="text-xs font-medium text-muted-foreground p-2">
-                                            Horário
+                            {/* Lista de horários */}
+                            <div className="space-y-4">
+                                {scheduleSlots.map((slot, index) => (
+                                    <div key={slot.id} className="p-4 border rounded-lg space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="font-semibold">Horário {index + 1}</h4>
+                                            {scheduleSlots.length > 1 && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => removeScheduleSlot(slot.id)}
+                                                >
+                                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                                </Button>
+                                            )}
                                         </div>
-                                        {DAYS_OF_WEEK.map((day) => (
-                                            <div
-                                                key={day.value}
-                                                className="text-center p-2 bg-muted rounded-t-lg"
-                                            >
-                                                <div className="font-semibold text-sm">{day.label}</div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {Object.values(schedule[day.value] || {}).filter(Boolean).length * 0.5}h
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
 
-                                    {/* Grid de horários */}
-                                    <div className="space-y-1">
-                                        {TIME_SLOTS.map((time) => (
-                                            <div key={time} className="grid grid-cols-8 gap-1">
-                                                {/* Coluna de horário */}
-                                                <div className="text-xs font-medium text-muted-foreground p-2 flex items-center">
-                                                    {time}
-                                                </div>
-
-                                                {/* Células de cada dia */}
-                                                {DAYS_OF_WEEK.map((day) => {
-                                                    const isSelected = schedule[day.value]?.[time];
-                                                    return (
-                                                        <button
-                                                            key={`${day.value}-${time}`}
-                                                            onClick={() => toggleTimeSlot(day.value, time)}
-                                                            className={`
-                                                                h-10 rounded transition-all border
-                                                                ${isSelected
-                                                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                                                                    : "bg-background hover:bg-muted border-border"
-                                                                }
-                                                            `}
-                                                            title={`${day.fullLabel} às ${time}`}
-                                                        />
-                                                    );
-                                                })}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            {/* Dia da semana */}
+                                            <div className="space-y-2">
+                                                <Label>Dia da semana *</Label>
+                                                <Select
+                                                    value={slot.day}
+                                                    onValueChange={(value) =>
+                                                        updateScheduleSlot(slot.id, "day", value)
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Selecione o dia" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {DAYS_OF_WEEK.map((day) => (
+                                                            <SelectItem key={day.value} value={day.value}>
+                                                                {day.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
-                                        ))}
+
+                                            {/* Horário inicial */}
+                                            <div className="space-y-2">
+                                                <Label>Horário inicial *</Label>
+                                                <Select
+                                                    value={slot.startTime}
+                                                    onValueChange={(value) =>
+                                                        updateScheduleSlot(slot.id, "startTime", value)
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Das" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {TIME_SLOTS.map((time) => (
+                                                            <SelectItem key={time} value={time}>
+                                                                {time}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            {/* Horário final */}
+                                            <div className="space-y-2">
+                                                <Label>Horário final *</Label>
+                                                <Select
+                                                    value={slot.endTime}
+                                                    onValueChange={(value) =>
+                                                        updateScheduleSlot(slot.id, "endTime", value)
+                                                    }
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Até" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {TIME_SLOTS.map((time) => (
+                                                            <SelectItem key={time} value={time}>
+                                                                {time}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
 
-                            {/* Legenda */}
-                            <div className="mt-6 flex items-center gap-6 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-primary rounded border border-primary"></div>
-                                    <span className="text-muted-foreground">Disponível</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-4 h-4 bg-background rounded border border-border"></div>
-                                    <span className="text-muted-foreground">Indisponível</span>
-                                </div>
-                            </div>
+                            {/* Botão adicionar horário */}
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={addScheduleSlot}
+                                className="w-full"
+                            >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Adicionar outro horário
+                            </Button>
 
                             {/* Dica */}
-                            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg flex gap-3">
-                                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                                <div className="text-sm">
-                                    <p className="font-medium mb-1">💡 Dica para aumentar seus ganhos</p>
-                                    <p className="text-muted-foreground">
-                                        Quanto mais horários disponíveis, mais alunos você pode atender.
-                                        Instrutores com 20h+ semanais ganham até 2x mais!
-                                    </p>
-                                </div>
+                            <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                                <p className="text-sm">
+                                    💡 <strong>Dica:</strong> Quanto mais horários disponíveis, mais alunos você pode atender.
+                                    Instrutores com 20h+ semanais ganham até 2x mais!
+                                </p>
                             </div>
                         </CardContent>
                     </Card>
@@ -300,7 +373,7 @@ export default function HorariosPage() {
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={totalHours < 10 || !address.city}
+                            disabled={!isValid}
                             className="flex-1"
                         >
                             Continuar
