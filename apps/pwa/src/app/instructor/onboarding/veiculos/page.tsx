@@ -197,12 +197,15 @@ export default function VeiculosPage() {
                                             <Select
                                                 value={vehicle.brand}
                                                 onValueChange={(value) => {
+                                                    console.log("Marca selecionada:", value);
                                                     updateVehicle(vehicle.id, "brand", value);
                                                     updateVehicle(vehicle.id, "model", ""); // Reset model
                                                 }}
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione a marca" />
+                                                    <SelectValue placeholder="Selecione a marca">
+                                                        {vehicle.brand || "Selecione a marca"}
+                                                    </SelectValue>
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {BRANDS.map((brand) => (
@@ -225,7 +228,9 @@ export default function VeiculosPage() {
                                                 disabled={!vehicle.brand}
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione o modelo" />
+                                                    <SelectValue placeholder="Selecione o modelo">
+                                                        {vehicle.model || "Selecione o modelo"}
+                                                    </SelectValue>
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {vehicle.brand &&
@@ -248,7 +253,9 @@ export default function VeiculosPage() {
                                                 }
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione o ano" />
+                                                    <SelectValue placeholder="Selecione o ano">
+                                                        {vehicle.year || "Selecione o ano"}
+                                                    </SelectValue>
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {YEARS.map((year) => (
@@ -270,7 +277,9 @@ export default function VeiculosPage() {
                                                 }
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione a cor" />
+                                                    <SelectValue placeholder="Selecione a cor">
+                                                        {vehicle.color || "Selecione a cor"}
+                                                    </SelectValue>
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {COLORS.map((color) => (
