@@ -1,276 +1,260 @@
-import { PrismaClient, InstructorStatus, VehicleCategory, TransmissionType, FuelType, UserRole, LessonStatus } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting database seed...");
+  console.log('🌱 Iniciando seed do banco de dados...\n');
 
-  // 1. Seed Skills
-  console.log("Creating/Updating skills...");
-  const skills = [
-    { name: "Controle de Embreagem", category: "BASIC", weight: 2 },
-    { name: "Controle de Volante", category: "BASIC", weight: 2 },
-    { name: "Baliza", category: "INTERMEDIATE", weight: 3 },
-    { name: "Direção Defensiva", category: "ADVANCED", weight: 3 },
-  ];
+  // ========================================
+  // 1. CRIAR ADMIN
+  // ========================================
+  console.log('👤 Criando usuário Admin...');
+  const adminPassword = await bcrypt.hash('admin123', 10);
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@bora.com' },
+    update: {},
+    create: {
+      email: 'admin@bora.com',
+      name: 'Admin Bora',
+      password: adminPassword,
+      role: 'ADMIN',
+      emailVerified: new Date(),
+    },
+  });
+  console.log('✅ Admin criado:', admin.email);
 
-  for (const skill of skills) {
-    const existing = await prisma.skill.findFirst({ where: { name: skill.name } });
-    if (!existing) {
-      await prisma.skill.create({
-        data: {
-          name: skill.name,
-          category: skill.category as any,
-          weight: skill.weight,
-          description: `Habilidade de ${skill.name}`,
-          order: 1
-        }
-      });
-    }
-  }
+  // ========================================
+  // 2. CRIAR INSTRUTORES
+  // ========================================
+  console.log('\n🚗 Criando instrutores...');
 
-  // 2. Bundles
-  console.log("Creating Bundles...");
-  const bundles = [
-    { name: "Pacote Iniciante", lessons: 5, price: 350.0, totalLessons: 5 },
-    { name: "Pacote Padrão", lessons: 10, price: 650.0, totalLessons: 10 },
-  ];
-
-  for (const bundle of bundles) {
-    const existing = await prisma.bundle.findFirst({ where: { name: bundle.name } });
-    if (!existing) {
-      await prisma.bundle.create({
-        data: {
-          name: bundle.name,
-          price: bundle.price,
-          totalLessons: bundle.totalLessons,
-          description: "Pacote global",
-          isActive: true,
-          expiryDays: 90,
-          discount: 0
-        }
-      });
-    }
-  }
-
-  // 3. Instrutores
-  console.log("Creating Instructors...");
-
-  const instructors = [
+  const instructorsData = [
     {
-      email: "carlos@bora.com",
-      name: "Carlos Silva",
-      bio: "Instrutor calmo e paciente, especialista em alunos nervosos e baliza perfeita. Mais de 15 anos de experiência.",
-      city: "Belo Horizonte",
-      state: "MG",
-      lat: -19.9167,
-      lng: -43.9345, // Centro BH
-      image: "https://randomuser.me/api/portraits/men/32.jpg",
-      car: {
-        brand: "Honda", model: "Civic", plateLastFour: "2024",
-        category: VehicleCategory.SEDAN, color: "Preto", year: 2022
+      email: 'joao.silva@bora.com',
+      name: 'João Silva',
+      cpf: '12345678900',
+      phone: '(11) 99999-1111',
+      cnhNumber: 'ABC123456',
+      credentialNumber: 'CRED001',
+      cep: '01310-100',
+      street: 'Av. Paulista',
+      neighborhood: 'Bela Vista',
+      city: 'São Paulo',
+      state: 'SP',
+      latitude: -23.5505,
+      longitude: -46.6333,
+      basePrice: 100,
+      vehicle: {
+        brand: 'Volkswagen',
+        model: 'Gol',
+        year: 2022,
+        color: 'Branco',
+        transmission: 'MANUAL' as const,
       },
-      packages: [
-        { name: "Intuito de Baliza", lessons: 5, price: 400, desc: "Foco total na baliza." },
-        { name: "Pacote Mensal", lessons: 10, price: 750, desc: "Aulas regulares." }
-      ],
-      shifts: { morning: true, afternoon: true, evening: false }
     },
     {
-      email: "ana@bora.com",
-      name: "Ana Souza",
-      bio: "Aulas dinâmicas e focadas na prática urbana. Vamos perder o medo do trânsito juntas!",
-      city: "Belo Horizonte",
-      state: "MG",
-      lat: -19.9300,
-      lng: -43.9200, // Savassi
-      image: "https://randomuser.me/api/portraits/women/44.jpg",
-      car: {
-        brand: "Fiat", model: "Mobi", plateLastFour: "1234",
-        category: VehicleCategory.HATCH, color: "Branco", year: 2023
+      email: 'maria.santos@bora.com',
+      name: 'Maria Santos',
+      cpf: '98765432100',
+      phone: '(11) 99999-2222',
+      cnhNumber: 'DEF789012',
+      credentialNumber: 'CRED002',
+      cep: '04538-133',
+      street: 'Av. Brigadeiro Faria Lima',
+      neighborhood: 'Itaim Bibi',
+      city: 'São Paulo',
+      state: 'SP',
+      latitude: -23.5781,
+      longitude: -46.6892,
+      basePrice: 120,
+      vehicle: {
+        brand: 'Chevrolet',
+        model: 'Onix',
+        year: 2023,
+        color: 'Prata',
+        transmission: 'AUTOMATICO' as const,
       },
-      packages: [
-        { name: "Recém-Habilitados", lessons: 3, price: 250, desc: "Perca o medo." },
-      ],
-      shifts: { morning: false, afternoon: true, evening: true }
     },
     {
-      email: "roberto@bora.com",
-      name: "Roberto Mendes",
-      bio: "Treinamento VIP em carro automático. Segurança e conforto em primeiro lugar.",
-      city: "Belo Horizonte",
-      state: "MG",
-      lat: -19.8500,
-      lng: -43.9600, // Pampulha
-      image: "https://randomuser.me/api/portraits/men/55.jpg",
-      car: {
-        brand: "Toyota", model: "Corolla", plateLastFour: "9999",
-        category: VehicleCategory.SEDAN, color: "Prata", year: 2021
+      email: 'carlos.oliveira@bora.com',
+      name: 'Carlos Oliveira',
+      cpf: '45678912300',
+      phone: '(11) 99999-3333',
+      cnhNumber: 'GHI345678',
+      credentialNumber: 'CRED003',
+      cep: '05407-002',
+      street: 'Av. Rebouças',
+      neighborhood: 'Pinheiros',
+      city: 'São Paulo',
+      state: 'SP',
+      latitude: -23.5629,
+      longitude: -46.6825,
+      basePrice: 90,
+      vehicle: {
+        brand: 'Fiat',
+        model: 'Argo',
+        year: 2021,
+        color: 'Vermelho',
+        transmission: 'MANUAL' as const,
       },
-      packages: [
-        { name: "Experiência VIP", lessons: 8, price: 900, desc: "Conforto total." },
-      ],
-      shifts: { morning: true, afternoon: false, evening: false }
     },
-    {
-      email: "julia@bora.com",
-      name: "Julia Lima",
-      bio: "Instrutora jovem e didática. Aprenda de forma leve e divertida.",
-      city: "Contagem",
-      state: "MG",
-      lat: -19.9000,
-      lng: -44.0200, // Contagem
-      image: "https://randomuser.me/api/portraits/women/68.jpg",
-      car: {
-        brand: "Hyundai", model: "HB20", plateLastFour: "5555",
-        category: VehicleCategory.HATCH, color: "Vermelho", year: 2024
-      },
-      packages: [
-        { name: "Iniciante Total", lessons: 20, price: 1800, desc: "Do zero à carta na mão." },
-      ],
-      shifts: { morning: true, afternoon: true, evening: true }
-    }
   ];
 
-  for (const data of instructors) {
-    // Upsert User
+  for (const data of instructorsData) {
+    const password = await bcrypt.hash('instrutor123', 10);
     const user = await prisma.user.upsert({
       where: { email: data.email },
-      update: { name: data.name, image: data.image },
+      update: {},
       create: {
         email: data.email,
         name: data.name,
-        image: data.image,
-        role: UserRole.INSTRUCTOR,
+        password,
+        role: 'INSTRUCTOR',
         emailVerified: new Date(),
-      }
+      },
     });
 
-    // Upsert Instructor Profile
     const instructor = await prisma.instructor.upsert({
       where: { userId: user.id },
-      update: { latitude: data.lat, longitude: data.lng, status: InstructorStatus.ACTIVE },
+      update: {},
       create: {
         userId: user.id,
-        bio: data.bio,
+        cpf: data.cpf,
+        phone: data.phone,
+        cnhNumber: data.cnhNumber,
+        credentialNumber: data.credentialNumber,
+        cep: data.cep,
+        street: data.street,
+        neighborhood: data.neighborhood,
         city: data.city,
         state: data.state,
-        latitude: data.lat,
-        longitude: data.lng,
-        cpf: `123-${data.name}`,
-        status: InstructorStatus.ACTIVE,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        basePrice: data.basePrice,
+        status: 'ACTIVE',
         isAvailable: true,
-        averageRating: 4.9,
-        totalLessons: 120,
-      }
+        isOnline: true,
+        averageRating: 4.8,
+        totalLessons: Math.floor(Math.random() * 50) + 10,
+      },
     });
 
-    // Create/Reset Vehicle
-    await prisma.vehicle.deleteMany({ where: { userId: user.id } });
-
+    // Criar veículo
     await prisma.vehicle.create({
       data: {
         userId: user.id,
-        brand: data.car.brand,
-        model: data.car.model,
-        year: data.car.year,
-        color: data.car.color,
-        plateLastFour: data.car.plateLastFour,
-        category: data.car.category,
-        fuel: FuelType.FLEX,
-        transmission: TransmissionType.MANUAL,
-        status: "active",
-        photoUrl: "https://img.freepik.com/free-photo/silver-sedan-car_1101-229.jpg",
-        pedalPhotoUrl: "https://img.freepik.com/free-photo/car-pedals_1101-331.jpg",
-        engine: "1.6 Flex",
-      }
+        brand: data.vehicle.brand,
+        model: data.vehicle.model,
+        year: data.vehicle.year,
+        color: data.vehicle.color,
+        plateLastFour: String(Math.floor(Math.random() * 9999)).padStart(4, '0'),
+        category: 'HATCH',
+        transmission: data.vehicle.transmission,
+        fuel: 'FLEX',
+        hasDualPedal: true,
+        status: 'active',
+      },
     });
 
-    // Create/Reset Custom Packages (Plans)
-    await prisma.plan.deleteMany({ where: { instructorId: instructor.id } });
-    for (const pkg of data.packages) {
-      await prisma.plan.create({
+    // Criar disponibilidade (Seg a Sex, 8h às 18h)
+    const daysOfWeek = [1, 2, 3, 4, 5];
+    for (const day of daysOfWeek) {
+      await prisma.instructorAvailability.create({
         data: {
           instructorId: instructor.id,
-          name: pkg.name,
-          lessons: pkg.lessons,
-          price: pkg.price,
-          description: pkg.desc,
-          isActive: true,
-          discount: 0
-        }
+          dayOfWeek: day,
+          startTime: '08:00',
+          endTime: '18:00',
+        },
       });
     }
 
-    // Create Availability (Agenda)
-    await prisma.instructorAvailability.deleteMany({ where: { instructorId: instructor.id } });
-
-    const shiftsToCreate = [];
-    const days = [1, 2, 3, 4, 5];
-
-    for (const day of days) {
-      if (data.shifts.morning) {
-        shiftsToCreate.push({ instructorId: instructor.id, dayOfWeek: day, startTime: "08:00", endTime: "12:00" });
-      }
-      if (data.shifts.afternoon) {
-        shiftsToCreate.push({ instructorId: instructor.id, dayOfWeek: day, startTime: "13:00", endTime: "17:00" });
-      }
-      if (data.shifts.evening) {
-        shiftsToCreate.push({ instructorId: instructor.id, dayOfWeek: day, startTime: "18:00", endTime: "22:00" });
-      }
-    }
-
-    if (shiftsToCreate.length > 0) {
-      await prisma.instructorAvailability.createMany({ data: shiftsToCreate });
-    }
-
-    console.log(`Verified instructor: ${data.name}`);
+    console.log(`✅ Instrutor criado: ${data.name} (${data.email})`);
   }
 
-  // 4. Alunos
-  console.log("Creating Students...");
-  const students = [
-    { email: "lucas@aluno.com", name: "Lucas Aluno", image: "https://randomuser.me/api/portraits/men/11.jpg" },
-    { email: "mari@aluno.com", name: "Mariana Aluno", image: "https://randomuser.me/api/portraits/women/22.jpg" },
-    { email: "pedro@aluno.com", name: "Pedro Aluno", image: "https://randomuser.me/api/portraits/men/33.jpg" },
+  // ========================================
+  // 3. CRIAR ALUNOS
+  // ========================================
+  console.log('\n🎓 Criando alunos...');
+
+  const studentsData = [
+    {
+      email: 'ana.costa@bora.com',
+      name: 'Ana Costa',
+      cpf: '11122233344',
+      phone: '(11) 98888-1111',
+      cep: '01310-100',
+      city: 'São Paulo',
+      state: 'SP',
+    },
+    {
+      email: 'pedro.alves@bora.com',
+      name: 'Pedro Alves',
+      cpf: '55566677788',
+      phone: '(11) 98888-2222',
+      cep: '04538-133',
+      city: 'São Paulo',
+      state: 'SP',
+    },
   ];
 
-  for (const s of students) {
+  for (const data of studentsData) {
+    const password = await bcrypt.hash('aluno123', 10);
     const user = await prisma.user.upsert({
-      where: { email: s.email },
+      where: { email: data.email },
       update: {},
       create: {
-        email: s.email,
-        name: s.name,
-        image: s.image,
-        role: UserRole.STUDENT,
+        email: data.email,
+        name: data.name,
+        password,
+        role: 'STUDENT',
         emailVerified: new Date(),
-      }
+      },
     });
 
-    // Upsert Student Profile
-    // Student has UNIQUE userId, so we can mock verify
-    const student = await prisma.student.findUnique({ where: { userId: user.id } });
-    if (!student) {
-      await prisma.student.create({
-        data: {
-          userId: user.id,
-          cpf: `111-${s.name.replace(/\s+/g, '')}`, // Mock CPF unique
-          level: 1,
-          points: 0,
-        }
-      });
-    }
+    await prisma.student.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: {
+        userId: user.id,
+        cpf: data.cpf,
+        phone: data.phone,
+        cep: data.cep,
+        city: data.city,
+        state: data.state,
+      },
+    });
 
-    console.log(`Verified student: ${s.name}`);
+    console.log(`✅ Aluno criado: ${data.name} (${data.email})`);
   }
 
-  console.log("🎉 Seed completed successfully!");
+  // ========================================
+  // RESUMO
+  // ========================================
+  console.log('\n🎉 Seed completo!\n');
+  console.log('📝 CREDENCIAIS DE TESTE:\n');
+  console.log('┌─────────────────────────────────────────────┐');
+  console.log('│ ADMIN                                       │');
+  console.log('│ Email: admin@bora.com                       │');
+  console.log('│ Senha: admin123                             │');
+  console.log('├─────────────────────────────────────────────┤');
+  console.log('│ INSTRUTORES                                 │');
+  console.log('│ Email: joao.silva@bora.com                  │');
+  console.log('│ Email: maria.santos@bora.com                │');
+  console.log('│ Email: carlos.oliveira@bora.com             │');
+  console.log('│ Senha: instrutor123 (todos)                 │');
+  console.log('├─────────────────────────────────────────────┤');
+  console.log('│ ALUNOS                                      │');
+  console.log('│ Email: ana.costa@bora.com                   │');
+  console.log('│ Email: pedro.alves@bora.com                 │');
+  console.log('│ Senha: aluno123 (todos)                     │');
+  console.log('└─────────────────────────────────────────────┘\n');
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Erro no seed:', e);
     process.exit(1);
   })
   .finally(async () => {

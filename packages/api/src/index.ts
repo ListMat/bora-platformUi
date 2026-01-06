@@ -14,6 +14,8 @@ import { planRouter } from "./routers/plan";
 import { notificationRouter } from "./routers/notification";
 import { adminRouter } from "./routers/admin";
 import { availabilityRouter } from "./routers/availability";
+import { mercadopagoRouter } from "./routers/mercadopago";
+import { authRouter } from "./routers/auth";
 
 export const appRouter = router({
   user: userRouter,
@@ -31,6 +33,8 @@ export const appRouter = router({
   notification: notificationRouter,
   admin: adminRouter,
   availability: availabilityRouter,
+  mercadopago: mercadopagoRouter,
+  auth: authRouter,
 });
 
 export type AppRouter = typeof appRouter;

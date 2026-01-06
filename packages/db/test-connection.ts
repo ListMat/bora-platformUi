@@ -1,81 +1,52 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function testConnection() {
-    console.log("╔════════════════════════════════════════════════════════════╗");
-    console.log("║     🔍 TESTE DE CONEXÃO SUPABASE - BORA PLATFORM          ║");
-    console.log("╚════════════════════════════════════════════════════════════╝\n");
+    console.log('🔌 Testando conexão com Supabase...\n');
 
     try {
-        // 1. Testa conexão
-        console.log("1️⃣  Testando conexão...");
+        // Teste 1: Conectar ao banco
         await prisma.$connect();
-        console.log("   ✅ Conexão estabelecida com sucesso!\n");
+        console.log('✅ Conexão estabelecida com sucesso!');
 
-        // 2. Testa query
-        console.log("2️⃣  Executando query de teste...");
-        const result = await prisma.$queryRaw`SELECT 1 as test`;
-        console.log("   ✅ Query executada com sucesso!\n");
-
-        // 3. Estatísticas do banco
-        console.log("3️⃣  Estatísticas do banco de dados:");
+        // Teste 2: Contar usuários
         const userCount = await prisma.user.count();
-        const studentCount = await prisma.student.count();
+        console.log(`✅ Usuários no banco: ${userCount}`);
+
+        // Teste 3: Contar instrutores
         const instructorCount = await prisma.instructor.count();
-        const vehicleCount = await prisma.vehicle.count();
+        console.log(`✅ Instrutores no banco: ${instructorCount}`);
 
-        console.log(`   👥 Total de usuários: ${userCount}`);
-        console.log(`   🎓 Total de estudantes: ${studentCount}`);
-        console.log(`   🚗 Total de instrutores: ${instructorCount}`);
-        console.log(`   🚙 Total de veículos: ${vehicleCount}\n`);
+        // Teste 4: Contar alunos
+        const studentCount = await prisma.student.count();
+        console.log(`✅ Alunos no banco: ${studentCount}`);
 
-        // 4. Usuários de teste
-        console.log("4️⃣  Usuários de teste cadastrados:");
-        const testUsers = await prisma.user.findMany({
-            where: {
-                OR: [
-                    { email: { contains: 'teste' } },
-                    { email: { contains: 'aluno' } },
-                    { email: { contains: 'instrutor' } }
-                ]
-            },
-            select: {
-                id: true,
-                email: true,
-                name: true,
-                role: true,
-                createdAt: true
-            },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        });
-
-        if (testUsers.length > 0) {
-            testUsers.forEach(user => {
-                const roleEmoji = user.role === 'STUDENT' ? '🎓' : user.role === 'INSTRUCTOR' ? '🚗' : '👤';
-                console.log(`   ${roleEmoji} ${user.name}`);
-                console.log(`      Email: ${user.email}`);
-                console.log(`      Role: ${user.role}`);
-                console.log(`      ID: ${user.id}\n`);
+        // Teste 5: Listar primeiros usuários
+        if (userCount > 0) {
+            console.log('\n📋 Primeiros usuários:');
+            const users = await prisma.user.findMany({
+                take: 5,
+                select: {
+                    email: true,
+                    name: true,
+                    role: true,
+                },
             });
-        } else {
-            console.log("   ⚠️  Nenhum usuário de teste encontrado\n");
+            users.forEach((user, i) => {
+                console.log(`  ${i + 1}. ${user.name} (${user.email}) - ${user.role}`);
+            });
         }
 
-        // 5. Status final
-        console.log("╔════════════════════════════════════════════════════════════╗");
-        console.log("║              🎉 SUPABASE FUNCIONANDO PERFEITAMENTE!       ║");
-        console.log("╚════════════════════════════════════════════════════════════╝");
-
-    } catch (error: any) {
-        console.log("\n╔════════════════════════════════════════════════════════════╗");
-        console.log("║                  ❌ ERRO DE CONEXÃO                        ║");
-        console.log("╚════════════════════════════════════════════════════════════╝\n");
-        console.error("Detalhes do erro:");
-        console.error(error.message);
-        if (error.code) console.error(`Código: ${error.code}`);
+        console.log('\n🎉 Todos os testes passaram!');
+        console.log('✅ Banco de dados está funcionando corretamente.\n');
+    } catch (error) {
+        console.error('\n❌ Erro na conexão:', error);
+        console.log('\n💡 Dicas:');
+        console.log('  1. Verifique se o DATABASE_URL está correto no .env');
+        console.log('  2. Verifique se a senha está correta');
+        console.log('  3. Execute "pnpm prisma db push" para criar as tabelas');
+        console.log('  4. Verifique se o Supabase está online\n');
         process.exit(1);
     } finally {
         await prisma.$disconnect();

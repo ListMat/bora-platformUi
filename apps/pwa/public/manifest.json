@@ -1,0 +1,106 @@
+{
+    "name": "Bora - Aulas de Direção",
+    "short_name": "Bora",
+    "description": "Plataforma completa para conectar alunos e instrutores de autoescola",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#7C3AED",
+    "theme_color": "#7C3AED",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/icons/icon-72x72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-152x152.png",
+            "sizes": "152x152",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-384x384.png",
+            "sizes": "384x384",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/screenshots/home.png",
+            "sizes": "540x720",
+            "type": "image/png",
+            "form_factor": "narrow"
+        },
+        {
+            "src": "/screenshots/map.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide"
+        }
+    ],
+    "categories": [
+        "education",
+        "transportation"
+    ],
+    "shortcuts": [
+        {
+            "name": "Buscar Instrutores",
+            "short_name": "Buscar",
+            "description": "Encontre instrutores próximos a você",
+            "url": "/buscar",
+            "icons": [
+                {
+                    "src": "/icons/search-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "Minhas Aulas",
+            "short_name": "Aulas",
+            "description": "Visualize suas aulas agendadas",
+            "url": "/aulas",
+            "icons": [
+                {
+                    "src": "/icons/lessons-96x96.png",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false
+}

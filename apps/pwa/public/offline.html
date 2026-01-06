@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - Bora</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #7C3AED 0%, #8B5CF6 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 32px;
+            padding: 48px 32px;
+            text-align: center;
+            max-width: 480px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .icon {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .icon svg {
+            width: 60px;
+            height: 60px;
+            color: white;
+        }
+
+        h1 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        .retry-button {
+            background: white;
+            color: #7C3AED;
+            font-weight: 600;
+            font-size: 16px;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .retry-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.2);
+        }
+
+        .retry-button:active {
+            transform: translateY(0);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon pulse">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414" />
+            </svg>
+        </div>
+        
+        <h1>Você está offline</h1>
+        <p>
+            Não foi possível conectar à internet. Verifique sua conexão e tente novamente.
+        </p>
+        
+        <button class="retry-button" onclick="location.reload()">
+            Tentar Novamente
+        </button>
+    </div>
+
+    <script>
+        // Listen for online event
+        window.addEventListener('online', () => {
+            location.reload();
+        });
+
+        // Check connection periodically
+        setInterval(() => {
+            if (navigator.onLine) {
+                location.reload();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

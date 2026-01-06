@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, instructorProcedure, adminProcedure, publicProcedure } from "../trpc";
-import { InstructorStatus } from "@bora/db";
+import { InstructorStatus, VehicleCategory, TransmissionType, FuelType } from "@bora/db";
 import { validateCPF, validateCNH } from "../utils/validators";
 import {
   uploadInstructorDocument,
@@ -21,8 +21,11 @@ export const instructorRouter = router({
       const instructor = await ctx.prisma.instructor.findUnique({
         where: { id: input.id },
         include: {
-          user: { select: { id: true, name: true, image: true } },
-          vehicles: { where: { status: "active" }, take: 1 },
+          user: {
+            include: {
+              vehicles: { where: { status: "active" }, take: 1 },
+            }
+          },
         },
       });
       if (!instructor) throw new Error("Instrutor não encontrado");
@@ -49,15 +52,18 @@ export const instructorRouter = router({
           longitude: { not: null },
         },
         include: {
-          user: true,
-          vehicles: {
-            where: {
-              status: "active",
-            },
-            take: 1,
-            orderBy: {
-              createdAt: "desc",
-            },
+          user: {
+            include: {
+              vehicles: {
+                where: {
+                  status: "active",
+                },
+                take: 1,
+                orderBy: {
+                  createdAt: "desc",
+                },
+              },
+            }
           },
         },
       });
@@ -116,6 +122,143 @@ export const instructorRouter = router({
       });
 
       return instructors;
+    }),
+
+  // Busca avançada de instrutores
+  search: publicProcedure
+    .input(
+      z.object({
+        query: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
+        radius: z.number().min(1).max(100).default(20), // km
+        minPrice: z.number().optional(),
+        maxPrice: z.number().optional(),
+        minRating: z.number().min(0).max(5).optional(),
+        transmission: z.enum(['manual', 'automatic']).optional(),
+        limit: z.number().min(1).max(50).default(20),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      // Construir filtros
+      const where: any = {
+        status: InstructorStatus.ACTIVE,
+        isAvailable: true,
+        isOnline: true,
+      };
+
+      // Filtro de preço
+      if (input.minPrice !== undefined || input.maxPrice !== undefined) {
+        where.basePrice = {};
+        if (input.minPrice !== undefined) where.basePrice.gte = input.minPrice;
+        if (input.maxPrice !== undefined) where.basePrice.lte = input.maxPrice;
+      }
+
+      // Filtro de avaliação
+      if (input.minRating !== undefined) {
+        where.averageRating = { gte: input.minRating };
+      }
+
+      // Busca por texto (nome ou cidade)
+      if (input.query) {
+        where.OR = [
+          { user: { name: { contains: input.query, mode: 'insensitive' } } },
+          { city: { contains: input.query, mode: 'insensitive' } },
+          { state: { contains: input.query, mode: 'insensitive' } },
+        ];
+      }
+
+      // Buscar instrutores
+      let instructors = await ctx.prisma.instructor.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+          user: {
+            include: {
+              vehicles: {
+                where: {
+                  status: 'active',
+                  ...(input.transmission && {
+                    transmission: input.transmission === 'automatic'
+                      ? TransmissionType.AUTOMATICO
+                      : TransmissionType.MANUAL
+                  }),
+                },
+                take: 1,
+                orderBy: { createdAt: 'desc' },
+              },
+            },
+          },
+          ratings: {
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+            include: {
+              student: {
+                include: {
+                  user: {
+                    select: {
+                      name: true,
+                      image: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        take: input.limit * 2, // Pegar mais para filtrar por distância depois
+      });
+
+      // Filtrar por transmissão se necessário
+      if (input.transmission) {
+        instructors = instructors.filter(instructor =>
+          instructor.user.vehicles.length > 0
+        );
+      }
+
+      // Calcular distância se coordenadas fornecidas
+      if (input.latitude !== undefined && input.longitude !== undefined) {
+        const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+          const R = 6371;
+          const dLat = (lat2 - lat1) * Math.PI / 180;
+          const dLon = (lon2 - lon1) * Math.PI / 180;
+          const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+          return R * c;
+        };
+
+        const instructorsWithDistance = instructors
+          .filter(i => i.latitude !== null && i.longitude !== null)
+          .map(instructor => ({
+            ...instructor,
+            distance: calculateDistance(
+              input.latitude!,
+              input.longitude!,
+              instructor.latitude!,
+              instructor.longitude!
+            ),
+          }))
+          .filter(instructor => instructor.distance <= input.radius)
+          .sort((a, b) => a.distance - b.distance)
+          .slice(0, input.limit);
+
+        return instructorsWithDistance;
+      }
+
+      // Sem filtro de distância, ordenar por avaliação
+      return instructors
+        .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
+        .slice(0, input.limit)
+        .map(instructor => ({ ...instructor, distance: undefined }));
     }),
 
   // Obter detalhes de instrutor
@@ -253,6 +396,103 @@ export const instructorRouter = router({
       });
 
       return instructor;
+    }),
+
+  // Criar primeiro plano (Onboarding)
+  createFirstPlan: protectedProcedure
+    .input(z.object({
+      weeklyHours: z.array(z.object({
+        dayOfWeek: z.number().min(0).max(6),
+        startTime: z.string(),
+        endTime: z.string(),
+      })),
+      cep: z.string(),
+      street: z.string().optional(),
+      neighborhood: z.string().optional(),
+      city: z.string(),
+      state: z.string(),
+      pricePerHour: z.number().min(50),
+      vehicle: z.object({
+        model: z.string(),
+        year: z.number(),
+        color: z.string(),
+        plate: z.string(),
+        transmission: z.enum(['manual', 'automatic']),
+        hasDualPedals: z.boolean(),
+      }),
+      photos: z.array(z.object({
+        url: z.string(),
+        type: z.string(),
+        order: z.number(),
+      })),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const user = await ctx.prisma.user.findUnique({
+        where: { email: ctx.session.user.email! },
+        include: { instructor: true },
+      });
+
+      if (!user?.instructor) {
+        throw new Error("Instructor profile not found");
+      }
+
+      // 1. Atualizar Instrutor
+      await ctx.prisma.instructor.update({
+        where: { id: user.instructor.id },
+        data: {
+          cep: input.cep,
+          street: input.street,
+          neighborhood: input.neighborhood,
+          city: input.city,
+          state: input.state,
+          basePrice: input.pricePerHour,
+          status: "ACTIVE", // Ou InstructorStatus.ACTIVE se o tipo for estrito
+          isOnline: true,
+          isAvailable: true,
+        },
+      });
+
+      // 2. Criar Veículo
+      const parts = input.vehicle.model.split(' ');
+      const brand = parts[0] || 'Unknown';
+      const model = parts.slice(1).join(' ') || parts[0] || 'Unknown';
+
+      await ctx.prisma.vehicle.create({
+        data: {
+          userId: user.id,
+          brand: brand,
+          model: model,
+          year: input.vehicle.year,
+          color: input.vehicle.color,
+          plateLastFour: input.vehicle.plate.slice(-4),
+          photoUrl: input.photos.find(p => p.type === 'main')?.url || input.photos[0]?.url || '',
+          photos: input.photos.map(p => p.url),
+          category: VehicleCategory.HATCH, // Default
+          transmission: input.vehicle.transmission === 'automatic' ? TransmissionType.AUTOMATICO : TransmissionType.MANUAL,
+          fuel: FuelType.FLEX, // Default
+          hasDualPedal: input.vehicle.hasDualPedals,
+          status: 'active',
+        },
+      });
+
+      // 3. Criar Disponibilidade
+      const availabilityData = input.weeklyHours.map(slot => ({
+        instructorId: user.instructor!.id, // Non-null assertion checked above
+        dayOfWeek: slot.dayOfWeek,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      }));
+
+      // Remover anteriores para evitar duplicação em re-tentativas
+      await ctx.prisma.instructorAvailability.deleteMany({
+        where: { instructorId: user.instructor.id }
+      });
+
+      await ctx.prisma.instructorAvailability.createMany({
+        data: availabilityData
+      });
+
+      return { success: true };
     }),
 
   // Upload de documento (CNH ou Credencial)

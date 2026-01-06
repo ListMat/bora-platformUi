@@ -98,6 +98,7 @@ model User {
   emailVerified DateTime?
   image         String?
   phone         String?
+  password      String?   // Para autenticação com credenciais
   role          UserRole  @default(STUDENT)
   
   // Push notifications
@@ -208,10 +209,13 @@ model Instructor {
   credentialDoc     String?  // URL S3/Supabase
   
   // Localização
-  latitude          Float?
-  longitude         Float?
-  city              String?
-  state             String?
+  cep             String?
+  street          String?
+  neighborhood    String?
+  latitude        Float?
+  longitude       Float?
+  city            String?
+  state           String?
   
   // Preço e disponibilidade
   basePrice         Decimal  @default(0) @db.Decimal(10, 2)
@@ -696,7 +700,9 @@ model Vehicle {
   year             Int               // 1980-2026
   color            String            // Branco, Preto, etc.
   plateLastFour    String            // 4 últimos caracteres
-  photoUrl         String            // Foto principal (obrigatória)
+  photoUrl         String?           // Foto principal (legacy)
+  photos           String[]          @default([]) // Fotos do veículo
+
   
   // Especificações
   category         VehicleCategory

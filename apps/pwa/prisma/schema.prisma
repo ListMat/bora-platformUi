@@ -1,0 +1,175 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==============================
+// NEXT AUTH MODELS
+// ==============================
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? // @db.Text
+  access_token      String? // @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? // @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Para Credentials Provider
+  role          String    @default("STUDENT") // "STUDENT" | "INSTRUCTOR" | "ADMIN"
+  
+  accounts      Account[]
+  sessions      Session[]
+  
+  student       Student?
+  instructor    Instructor?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==============================
+// APP DOMAIN MODELS
+// ==============================
+
+model Student {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  cpf       String?  @unique
+  phone     String?
+  
+  // Endereço
+  cep       String?
+  city      String?
+  state     String?
+  
+  lessons   Lesson[] @relation("StudentLessons")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Instructor {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  cpf          String?  @unique
+  phone        String?
+  cnhNumber    String?
+  
+  // Status e Perfil
+  isOnline     Boolean  @default(false)
+  bio          String?
+  avatar       String?
+  
+  // Configurações de Aulas
+  pricePerHour Decimal?
+  
+  // Localização de Atendimento
+  cep          String?
+  address      String?
+  neighborhood String?
+  city         String?
+  state        String?
+  
+  // Relacionamentos
+  vehicles     Vehicle[]
+  schedule     Schedule[]
+  lessons      Lesson[]   @relation("InstructorLessons")
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Vehicle {
+  id           String     @id @default(cuid())
+  instructorId String
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  
+  model        String     // Ex: Fiat Uno
+  year         Int?
+  color        String?
+  plate        String?
+  photoUrl     String?
+  isAutomatic  Boolean    @default(false)
+  hasDualPedals Boolean   @default(true)
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Schedule {
+  id           String     @id @default(cuid())
+  instructorId String
+  instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  
+  dayOfWeek    Int        // 0=Dom, 1=Seg, ...
+  startTime    String     // "HH:MM"
+  endTime      String     // "HH:MM"
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  @@unique([instructorId, dayOfWeek, startTime])
+}
+
+model Lesson {
+  id           String     @id @default(cuid())
+  
+  studentId    String
+  student      Student    @relation("StudentLessons", fields: [studentId], references: [id])
+  
+  instructorId String
+  instructor   Instructor @relation("InstructorLessons", fields: [instructorId], references: [id])
+  
+  status       String     // "PENDING", "CONFIRMED", "COMPLETED", "CANCELLED"
+  date         DateTime
+  duration     Int        @default(60) // minutos
+  price        Decimal
+  
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}

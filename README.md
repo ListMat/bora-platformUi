@@ -1,365 +1,255 @@
-# 🚗 BORA - Plataforma de Aulas de Direção
+# Bora PWA - Marketplace de Aulas de Direção
 
-> Conectando alunos e instrutores de direção através de tecnologia moderna
+> PWA moderno para conectar alunos e instrutores de autoescola
 
-[![CI](https://github.com/ListMat/bora-platformUi/workflows/CI/badge.svg)](https://github.com/ListMat/bora-platformUi/actions)
-[![License](https://img.shields.io/badge/license-Proprietary-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19-blue)](https://react.dev/)
+[![HeroUI](https://img.shields.io/badge/HeroUI-2.8-purple)](https://www.heroui.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
 
-Monorepo moderno construído com Turborepo, Next.js 15, Expo Router 3, e shadcn/ui para oferecer uma experiência completa de agendamento e gestão de aulas práticas de direção.
+---
 
-## 📋 Features
+## 🚀 Stack Tecnológico
 
-### 🎯 Core
--  Sistema completo de agendamento de aulas
--  Rastreamento em tempo real durante aulas
--  Pagamentos integrados (Stripe + Pix)
--  Recibos digitais em PDF
--  Sistema de avaliação bidirecional
--  Gamificação (pontos, níveis, medalhas)
--  Sistema de indicação (referral)
--  **NOVO:** Sistema de cadastro de veículos com upload de fotos
+### Frontend
+- **Framework:** Next.js 16 (App Router + Turbopack)
+- **UI Library:** HeroUI 2.8.7
+- **Styling:** Tailwind CSS 4
+- **Language:** TypeScript 5.9
+- **State:** React 19 + Hooks
 
-### 🔒 Segurança & LGPD
--  Botão SOS em aulas ativas
--  Gravação opt-in de aulas
--  Exclusão de dados (direito ao esquecimento)
--  Rate limiting em endpoints críticos
--  Autenticação segura (NextAuth + SecureStore)
+### Backend (Futuro)
+- **API:** tRPC
+- **Database:** Prisma + PostgreSQL
+- **Auth:** NextAuth.js
+- **Payments:** Stripe / Mercado Pago
 
-### 👨‍💼 Admin
-- Dashboard com métricas em tempo real
-- Gestão de usuários e instrutores
-- Aprovação de credenciais
-- Histórico de emergências
-- **NOVO:** Gerenciamento de veículos cadastrados
+### PWA
+- **Service Worker:** next-pwa
+- **Offline:** Cache strategies
+- **Install:** Manifest.json
+- **Push:** Web Push API
 
-## 📁 Estrutura do Monorepo
+---
+
+## 📁 Estrutura do Projeto
 
 ```
-bora/
+bora-pwa/
 ├── apps/
-│   ├── web-admin/          # Painel Admin (Next.js 15 + shadcn/ui)
-│   ├── web-site/           # Site Institucional (Next.js 15)
-│   ├── app-aluno/          # App do Aluno (Expo Router 3)
-│   └── app-instrutor/      # App do Instrutor (Expo Router 3)
-├── packages/
-│   ├── ui/                 # Componentes compartilhados (shadcn/ui)
-│   ├── db/                 # Prisma schema + migrations
-│   ├── api/                # tRPC routers + business logic
-│   │   ├── routers/        # API routers
-│   │   │   ├── user.ts     # Usuários, perfil, gamificação
-│   │   │   ├── lesson.ts   # Aulas, tracking, recibos
-│   │   │   ├── instructor.ts  # Instrutores, avaliações
-│   │   │   ├── payment.ts  # Pagamentos, Stripe, Pix
-│   │   │   ├── rating.ts   # Sistema de avaliações
-│   │   │   ├── emergency.ts   # SOS, emergências
-│   │   │   └── vehicle.ts  # Cadastro de veículos (NOVO)
-│   │   └── modules/        # Módulos de negócio
-│   │       ├── gamification.ts  # Pontos, medalhas, níveis
-│   │       ├── rateLimiter.ts   # Rate limiting
-│   │       ├── receiptGenerator.ts  # Geração de PDFs
-│   │       ├── supabaseStorage.ts   # Upload de arquivos
-│   │       └── vehicleStorage.ts    # Upload de fotos de veículos (NOVO)
-│   ├── auth/               # Autenticação (NextAuth)
-│   ├── eslint-config/      # Configuração ESLint
-│   ├── tsconfig/           # Base TypeScript configs
-│   └── i18n/               # Internacionalização
-└── .github/
-    └── workflows/          # CI/CD (GitHub Actions)
-        ├── ci.yml          # Lint, type-check, test, build
-        ├── deploy-web.yml  # Deploy Vercel
-        └── deploy-mobile.yml  # Deploy Expo EAS
+│   └── pwa/                    # PWA Next.js
+│       ├── src/
+│       │   ├── app/            # App Router
+│       │   │   ├── (landing)/  # Landing pages
+│       │   │   ├── (auth)/     # Auth pages
+│       │   │   ├── (student)/  # Student dashboard
+│       │   │   └── (instructor)/ # Instructor dashboard
+│       │   ├── components/     # React components
+│       │   └── lib/            # Utilities
+│       ├── public/             # Static assets
+│       └── docs/               # Documentation
+├── packages/                   # Shared packages
+│   ├── api/                    # tRPC API (futuro)
+│   ├── database/               # Prisma (futuro)
+│   └── shared/                 # Utils (futuro)
+└── README.md                   # Este arquivo
 ```
 
-## 🚀 Início Rápido
+---
+
+## 🛠️ Desenvolvimento
 
 ### Pré-requisitos
-
-- **Node.js** >= 18.17.0
-- **pnpm** >= 8.0.0
-- **PostgreSQL** (via Supabase ou local)
-- **Stripe** Account (para pagamentos)
-- **Expo** Account (para apps mobile)
-- **Supabase** Account (para storage de fotos)
+- Node.js >= 18
+- pnpm >= 9.15
 
 ### Instalação
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/ListMat/bora-platformUi.git
-cd bora-platformUi
+# Clonar repositório
+git clone https://github.com/seu-usuario/bora-pwa.git
+cd bora-pwa
 
-# 2. Instale dependências
+# Instalar dependências
 pnpm install
-
-# 3. Configure variáveis de ambiente
-# Veja ENV_SETUP.md para detalhes
-cp .env.example .env
-
-# 4. Setup do banco de dados
-cd packages/db
-pnpm prisma generate
-pnpm prisma db push
-pnpm prisma db seed  # (opcional) dados de exemplo
-
-# 5. Inicie o ambiente de desenvolvimento
-cd ../..
-pnpm dev
 ```
 
-Acesse:
-- **Admin Panel**: http://localhost:3000
-- **Cadastro de Veículos**: http://localhost:3000/vehicles
-- **Site Institucional**: http://localhost:3001
-- **App Aluno**: Expo Go (mobile)
-- **App Instrutor**: Expo Go (mobile)
+### Rodar em Desenvolvimento
 
-## 🌐 Apps e Serviços
+```bash
+# Rodar PWA
+pnpm dev
 
-### Web Admin (Port 3000)
-Painel administrativo para gestão da plataforma.
+# Ou diretamente
+pnpm pwa
 
-**Funcionalidades:**
-- Dashboard com métricas
-- Gestão de usuários
-- Aprovação de instrutores
-- Monitoramento de aulas
-- Histórico de pagamentos
-- Logs de emergência
-- **NOVO:** Cadastro e gerenciamento de veículos
+# Abrir: http://localhost:3000
+```
 
-**Stack:** Next.js 15, tRPC, NextAuth, shadcn/ui
+### Build de Produção
 
-### Web Site (Port 3001)
-Landing page institucional.
+```bash
+# Build
+pnpm build
 
-**Funcionalidades:**
-- Apresentação da plataforma
-- Cadastro inicial
-- Informações para instrutores
-- Blog/FAQ
+# Start produção
+cd apps/pwa && pnpm start
+```
 
-**Stack:** Next.js 15, Tailwind CSS
+---
 
-### App Aluno
-Aplicativo mobile para estudantes.
+## 📱 PWA Features
 
-**Funcionalidades:**
-- Busca de instrutores próximos
-- Agendamento de aulas
-- Pagamento (cartão e Pix)
-- Carteira de créditos
-- Acompanhamento de aula em tempo real
-- Avaliação pós-aula
-- Gamificação (pontos, medalhas)
-- SOS durante aula
+### Instalável
+- ✅ Manifest.json configurado
+- ✅ Service Worker ativo
+- ✅ Ícones em múltiplos tamanhos
+- ✅ Splash screens
 
-**Stack:** Expo Router 3, React Native, tRPC, react-native-maps
+### Offline
+- ✅ Cache de páginas
+- ✅ Cache de assets
+- ✅ Fallback offline
+- ✅ Background sync
 
-### App Instrutor
-Aplicativo mobile para instrutores.
+### Performance
+- ✅ Next.js 16 Turbopack
+- ✅ React 19 optimizations
+- ✅ Image optimization
+- ✅ Code splitting
 
-**Funcionalidades:**
-- Gestão de disponibilidade
-- Aceitar/recusar solicitações
-- Iniciar/finalizar aulas
-- Tracking de localização
-- Notas sobre alunos
-- Recebimentos e receita
-- Avaliação de alunos
-
-**Stack:** Expo Router 3, React Native, tRPC, expo-location
-
-## 🛠️ Stack Tecnológica
-
-### Frontend
-- **Framework Web:** Next.js 15 (App Router, Server Components)
-- **Framework Mobile:** Expo Router 3, React Native
-- **UI Components:** shadcn/ui, Tailwind CSS
-- **State Management:** tRPC, TanStack Query
-- **Forms:** React Hook Form, Zod
-
-### Backend
-- **API:** tRPC (type-safe end-to-end)
-- **Database:** PostgreSQL (Supabase ou local)
-- **ORM:** Prisma
-- **Storage:** Supabase Storage
-- **Cache/Rate Limit:** Upstash Redis
-
-### Auth & Payments
-- **Web Auth:** NextAuth.js
-- **Mobile Auth:** Expo SecureStore
-- **Payments:** Stripe (Cards + Pix)
-
-### DevOps & Tools
-- **Monorepo:** Turborepo
-- **Package Manager:** pnpm
-- **Linting:** ESLint, Prettier
-- **Testing:** Vitest, Detox (planned)
-- **CI/CD:** GitHub Actions
-- **Hosting:** Vercel (web), Expo EAS (mobile)
+---
 
 ## 🎨 Design System
 
-### Cores Principais
+### Tema HeroUI
+- **Primary:** #006FEE (Azul)
+- **Secondary:** #7828C8 (Roxo)
+- **Success:** #17C964 (Verde)
+- **Warning:** #F5A524 (Amarelo)
+- **Danger:** #F31260 (Rosa)
 
-```css
---bora-green: #00C853;      /* Primary brand color */
---bora-orange: #FF6D00;     /* Secondary accent */
---bora-dark: #1A1A1A;       /* Text primary */
---bora-gray: #666666;       /* Text secondary */
-```
+### Componentes
+- Navbar responsivo
+- Cards interativos
+- Forms com validação
+- Tables com sorting
+- Modals e Drawers
+- Toast notifications
 
-### Tokens
-Tokens de design centralizados em `packages/ui/tokens/`
+---
 
-## 📝 Scripts Disponíveis
+## 📄 Páginas Implementadas
 
-```bash
-# Desenvolvimento
-pnpm dev                    # Inicia todos os apps
-pnpm dev:web                # Apenas apps web
-pnpm dev:mobile             # Apenas apps mobile
+### Landing
+- ✅ Homepage (`/`)
+- ✅ Pricing (`/pricing`)
+- ✅ Boost (`/boost`)
 
-# Build
-pnpm build                  # Build de produção (todos)
-pnpm build:web              # Build apenas web
-pnpm build:mobile           # Build apenas mobile
+### Auth
+- ✅ Cadastro Aluno (`/signup/student`)
+- ⏳ Cadastro Instrutor (`/signup/instructor`)
+- ⏳ Login (`/login`)
 
-# Qualidade de Código
-pnpm lint                   # ESLint
-pnpm lint:fix               # Fix automático
-pnpm type-check             # TypeScript check
-pnpm format                 # Prettier
+### Dashboards
+- ✅ Dashboard Aluno (`/student/dashboard`)
+- ✅ Dashboard Instrutor (`/instructor/dashboard`)
 
-# Testes
-pnpm test                   # Rodar testes
-pnpm test:watch             # Watch mode
-pnpm test:coverage          # Com cobertura
+---
 
-# Database
-pnpm db:push                # Sync schema
-pnpm db:migrate             # Criar migration
-pnpm db:seed                # Popular dados
-pnpm db:studio              # Prisma Studio
+## 🚀 Deploy
 
-# Mobile
-pnpm mobile:ios             # Rodar iOS
-pnpm mobile:android         # Rodar Android
-```
-
-## 📚 Documentação Adicional
-
-- **[ENV_SETUP.md](./ENV_SETUP.md)** - Configuração de variáveis de ambiente
-- **[POSTGRESQL_SETUP.md](./docs/POSTGRESQL_SETUP.md)** - Setup do PostgreSQL local
-- **[SUPABASE_VEHICLE_BUCKET_SETUP.md](./docs/SUPABASE_VEHICLE_BUCKET_SETUP.md)** - Configuração do storage de veículos
-- **[TESTING.md](./TESTING.md)** - Estratégia e guia de testes
-- **[CHANGELOG.md](./CHANGELOG.md)** - Histórico de versões
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)** - Guia para contribuidores
-
-## 🔄 Workflow de Desenvolvimento
-
-1. Crie uma branch a partir de `main`
-   ```bash
-   git checkout -b feature/minha-feature
-   ```
-
-2. Faça suas alterações e commit
-   ```bash
-   git add .
-   git commit -m "feat: adiciona nova funcionalidade"
-   ```
-
-3. Push e abra um Pull Request para `main`
-   ```bash
-   git push origin feature/minha-feature
-   ```
-
-4. CI roda automaticamente (lint, type-check, test, build)
-
-5. Após aprovação, merge para `main`
-
-## 🚢 Deploy
-
-### Web Apps (Vercel)
-- **Automático** em merge para `main`
-- Configuração: `.github/workflows/deploy-web.yml`
-- Preview deployments em cada PR
-
-### Mobile Apps (Expo EAS)
-- **Manual** via workflow ou automático em `main`
-- Configuração: `.github/workflows/deploy-mobile.yml`
-- Builds para iOS e Android
-
-## 🧪 Testes
+### Vercel (Recomendado)
 
 ```bash
-# Unitários
-pnpm --filter @bora/api test
+# Install Vercel CLI
+pnpm add -g vercel
 
-# Com cobertura
-pnpm --filter @bora/api test:coverage
-
-# E2E (futuro)
-pnpm --filter app-aluno test:e2e
+# Deploy
+cd apps/pwa
+vercel
 ```
 
-**Meta de cobertura:** 70% (crítico: 80%+)
+### Outras Plataformas
+- Netlify
+- Cloudflare Pages
+- AWS Amplify
 
-Ver [TESTING.md](./TESTING.md) para mais detalhes.
+---
+
+## 📚 Documentação
+
+### Estratégia
+- [ESTRATEGIA_MARKETPLACE.md](apps/pwa/ESTRATEGIA_MARKETPLACE.md)
+- [NOVA_ESTRATEGIA_HEROUI.md](apps/pwa/NOVA_ESTRATEGIA_HEROUI.md)
+- [MODELOS_MONETIZACAO.md](apps/pwa/MODELOS_MONETIZACAO.md)
+
+### Implementação
+- [IMPLEMENTACAO_HEROUI_COMPLETA.md](apps/pwa/IMPLEMENTACAO_HEROUI_COMPLETA.md)
+- [UI_UX_MODERNA_HEROUI.md](apps/pwa/UI_UX_MODERNA_HEROUI.md)
+- [INDEX.md](apps/pwa/INDEX.md)
+
+---
+
+## 🎯 Roadmap
+
+### ✅ Fase 1: MVP UI (Completo)
+- [x] Setup Next.js + HeroUI
+- [x] Homepage moderna
+- [x] Páginas de pricing/boost
+- [x] Dashboards aluno/instrutor
+- [x] PWA configurado
+
+### ⏳ Fase 2: Backend (Próximo)
+- [ ] NextAuth authentication
+- [ ] tRPC API
+- [ ] Prisma + PostgreSQL
+- [ ] CRUD completo
+
+### 📋 Fase 3: Features
+- [ ] Busca de instrutores
+- [ ] Sistema de agendamento
+- [ ] Chat em tempo real
+- [ ] Pagamentos (Stripe)
+- [ ] Notificações push
+
+### 🚀 Fase 4: Launch
+- [ ] Deploy produção
+- [ ] Analytics (GA4)
+- [ ] Marketing
+- [ ] Onboarding usuários
+
+---
 
 ## 🤝 Contribuindo
 
-Contribuições são bem-vindas! Por favor:
-
 1. Fork o projeto
 2. Crie uma branch (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'feat: Add AmazingFeature'`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
 4. Push para a branch (`git push origin feature/AmazingFeature`)
 5. Abra um Pull Request
 
-Ver [CONTRIBUTING.md](./CONTRIBUTING.md) para mais detalhes.
+---
 
-## 📄 Licença
+## 📝 License
 
-Este projeto é proprietário. Todos os direitos reservados.
-
-## 👥 Time
-
-Desenvolvido por [Seu Nome/Empresa]
-
-## 💬 Suporte
-
-- **Email:** suporte@bora.com
-- **Discord:** [Link do servidor]
-- **Issues:** [GitHub Issues](https://github.com/ListMat/bora-platformUi/issues)
+Este projeto está sob a licença MIT.
 
 ---
 
-## 🆕 Changelog - v0.2.0
+## 👥 Autores
 
-### Sistema de Cadastro de Veículos
-
-**Implementado em:** Dezembro 2024
-
-#### Novas Funcionalidades
-- ✅ Cadastro completo de veículos (marca, modelo, ano, cor, placa)
-- ✅ Upload de fotos (drag & drop)
-- ✅ Formulário multi-step (3 etapas)
-- ✅ Validação de duplo-pedal obrigatório para instrutores
-- ✅ Upload de foto do pedal
-- ✅ Seleção de itens de segurança e conforto
-- ✅ 15 marcas com 80+ modelos pré-configurados
-- ✅ Soft delete de veículos
-- ✅ Permissões por role
-
-#### Documentação
-- 📚 Guia completo de setup
-- 📚 Configuração do Supabase Storage
-- 📚 7 testes automatizados
-
-Ver [RELEASE_NOTES_v0.2.0.md](./RELEASE_NOTES_v0.2.0.md) para detalhes completos.
+- **Mateus** - *Initial work*
 
 ---
 
-**BORA** - Conectando o futuro das autoescolas 🚗🎓
+## 🙏 Agradecimentos
+
+- [Next.js](https://nextjs.org/)
+- [HeroUI](https://www.heroui.com/)
+- [Vercel](https://vercel.com/)
+- [Tailwind CSS](https://tailwindcss.com/)
+
+---
+
+**Desenvolvido com 💜 em 2026**
