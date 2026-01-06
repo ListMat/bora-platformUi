@@ -219,9 +219,7 @@ export default function VeiculosPage() {
                                                 }}
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione a marca">
-                                                        {vehicle.brand || "Selecione a marca"}
-                                                    </SelectValue>
+                                                    <SelectValue placeholder="Selecione a marca" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {BRANDS.map((brand) => (
@@ -244,9 +242,7 @@ export default function VeiculosPage() {
                                                 disabled={!vehicle.brand}
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione o modelo">
-                                                        {vehicle.model || "Selecione o modelo"}
-                                                    </SelectValue>
+                                                    <SelectValue placeholder="Selecione o modelo" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {vehicle.brand &&
@@ -269,9 +265,7 @@ export default function VeiculosPage() {
                                                 }
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione o ano">
-                                                        {vehicle.year || "Selecione o ano"}
-                                                    </SelectValue>
+                                                    <SelectValue placeholder="Selecione o ano" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {YEARS.map((year) => (
@@ -293,9 +287,7 @@ export default function VeiculosPage() {
                                                 }
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione a cor">
-                                                        {vehicle.color || "Selecione a cor"}
-                                                    </SelectValue>
+                                                    <SelectValue placeholder="Selecione a cor" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     {COLORS.map((color) => (
@@ -317,13 +309,7 @@ export default function VeiculosPage() {
                                                 }
                                             >
                                                 <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione a transmissão">
-                                                        {vehicle.transmission === "MANUAL" && "Manual"}
-                                                        {vehicle.transmission === "AUTOMATICO" && "Automático"}
-                                                        {vehicle.transmission === "CVT" && "CVT"}
-                                                        {vehicle.transmission === "SEMI_AUTOMATICO" && "Automatizado"}
-                                                        {!vehicle.transmission && "Selecione a transmissão"}
-                                                    </SelectValue>
+                                                    <SelectValue placeholder="Selecione a transmissão" />
                                                 </SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="MANUAL">Manual</SelectItem>
