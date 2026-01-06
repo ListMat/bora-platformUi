@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Clock, AlertCircle, MapPin, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { api } from "@/utils/api";
 
 const DAYS_OF_WEEK = [
     { value: "0", label: "Domingo" },
@@ -135,7 +136,10 @@ export default function HorariosPage() {
         return true;
     };
 
-    const handleSubmit = () => {
+    const updateAvailability = api.instructor.updateAvailabilityAndLocation.useMutation();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async () => {
         const totalHours = getTotalHours();
 
         if (!validateSchedules()) {
@@ -153,8 +157,31 @@ export default function HorariosPage() {
             return;
         }
 
-        // TODO: Salvar horários e localização
-        router.push("/instructor/onboarding/veiculos");
+        setIsSubmitting(true);
+        setError("");
+
+        try {
+            await updateAvailability.mutateAsync({
+                cep,
+                street: address.street,
+                neighborhood: address.neighborhood,
+                city: address.city,
+                state: address.state,
+                weeklyHours: scheduleSlots.map(slot => ({
+                    dayOfWeek: parseInt(slot.day),
+                    startTime: slot.startTime,
+                    endTime: slot.endTime,
+                })),
+            });
+
+            // Redirecionar para veiculos
+            router.push("/instructor/onboarding/veiculos");
+        } catch (err) {
+            console.error(err);
+            setError("Erro ao salvar horários. Tente novamente.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const totalHours = getTotalHours();

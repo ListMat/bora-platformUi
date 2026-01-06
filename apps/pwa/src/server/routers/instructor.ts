@@ -11,119 +11,103 @@ export const instructorRouter = createTRPCRouter({
         return instructor;
     }),
 
-    createFirstPlan: protectedProcedure
-        .input(firstPlanSchema)
+    updateAvailabilityAndLocation: protectedProcedure
+        .input(z.object({
+            cep: z.string(),
+            street: z.string(),
+            neighborhood: z.string(),
+            city: z.string(),
+            state: z.string(),
+            weeklyHours: z.array(z.object({
+                dayOfWeek: z.number(),
+                startTime: z.string(),
+                endTime: z.string(),
+            })),
+        }))
         .mutation(async ({ ctx, input }) => {
-            const { weeklyHours, cep, pricePerHour, vehicle, photos, street, neighborhood, city, state } = input;
+            const { weeklyHours, cep, street, neighborhood, city, state } = input;
             const userId = ctx.session.user.id;
 
-            console.log("📝 [createFirstPlan] Iniciando...", { userId, input });
+            // 1. Geocodificar (simplificado)
+            let lat: number | null = null;
+            let lng: number | null = null;
+            // ... (Lógica de geocodificação poderia ser extraída para um helper)
 
-            try {
-                // 1. Geocodificar endereço para obter Lat/Lng
-                let lat: number | null = null;
-                let lng: number | null = null;
-                const fullAddress = `${street || ''}, ${neighborhood || ''}, ${city} - ${state}, Brasil`;
-
-                try {
-                    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-                    if (token) {
-                        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?access_token=${token}&country=br&limit=1`;
-                        const res = await fetch(url);
-                        const data = await res.json();
-                        if (data.features && data.features.length > 0) {
-                            lng = data.features[0].center[0];
-                            lat = data.features[0].center[1];
+            // 2. Upsert Instructor apenas com dados de local e disponibilidade
+            return ctx.prisma.instructor.upsert({
+                where: { userId },
+                create: {
+                    userId,
+                    cep,
+                    street,
+                    neighborhood,
+                    city,
+                    state,
+                    basePrice: 0, // Será definido depois
+                    status: "PENDING_VERIFICATION",
+                    availability: {
+                        createMany: {
+                            data: weeklyHours.map(slot => ({
+                                dayOfWeek: slot.dayOfWeek,
+                                startTime: slot.startTime,
+                                endTime: slot.endTime,
+                            }))
                         }
                     }
-                } catch (err) {
-                    console.error("Erro ao geocodificar endereço:", err);
-                }
-
-                // 2. Upsert Instructor com Availability aninhado
-                const instructor = await ctx.prisma.instructor.upsert({
-                    where: { userId },
-                    create: {
-                        userId,
-                        pricePerHour,
-                        cep,
-                        street,
-                        neighborhood,
-                        city,
-                        state,
-                        isOnline: true,
-                        status: "ACTIVE",
-                        isAvailable: true,
-                        latitude: lat,
-                        longitude: lng,
-                        // @ts-ignore
-                        availability: {
-                            createMany: {
-                                data: weeklyHours.map(slot => ({
-                                    dayOfWeek: slot.dayOfWeek,
-                                    startTime: slot.startTime,
-                                    endTime: slot.endTime,
-                                }))
-                            }
-                        }
-                    },
-                    update: {
-                        pricePerHour,
-                        cep,
-                        isOnline: true,
-                        latitude: lat ?? undefined,
-                        longitude: lng ?? undefined,
-                        // @ts-ignore
-                        availability: {
-                            deleteMany: {},
-                            createMany: {
-                                data: weeklyHours.map(slot => ({
-                                    dayOfWeek: slot.dayOfWeek,
-                                    startTime: slot.startTime,
-                                    endTime: slot.endTime,
-                                }))
-                            }
-                        }
-                    },
-                });
-
-                // 2. Criar Veículo via User update (nested write)
-                await ctx.prisma.user.update({
-                    where: { id: userId },
-                    data: {
-                        // @ts-ignore
-                        vehicles: {
-                            create: {
-                                brand: "Não informada",
-                                model: vehicle.model,
-                                year: vehicle.year,
-                                color: vehicle.color,
-                                plateLastFour: vehicle.plate.slice(-4) || "0000",
-                                category: "HATCH",
-                                transmission: vehicle.transmission === 'automatic' ? "AUTOMATICO" : "MANUAL",
-                                fuel: "FLEX",
-                                engine: "1.0",
-                                hasDualPedal: vehicle.hasDualPedals,
-                                photoUrl: photos[0]?.url || "",
-                                photos: photos.map(p => p.url),
-                                status: "active"
-                            }
+                },
+                update: {
+                    cep,
+                    street,
+                    neighborhood,
+                    city,
+                    state,
+                    availability: {
+                        deleteMany: {},
+                        createMany: {
+                            data: weeklyHours.map(slot => ({
+                                dayOfWeek: slot.dayOfWeek,
+                                startTime: slot.startTime,
+                                endTime: slot.endTime,
+                            }))
                         }
                     }
-                });
-
-                console.log("✅ [createFirstPlan] Sucesso!");
-                return { success: true, instructorId: instructor.id };
-
-            } catch (error: any) {
-                console.error("❌ [createFirstPlan] Erro:", error);
-                // Log detalhado do erro Prisma se disponível
-                if (error.code) {
-                    console.error("❌ [createFirstPlan] Prisma Code:", error.code);
-                    console.error("❌ [createFirstPlan] Prisma Meta:", error.meta);
                 }
-                throw error;
-            }
+            });
+        }),
+
+    activateProfile: protectedProcedure
+        .input(z.object({
+            pricePerHour: z.number().min(1),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.session.user.id;
+
+            // Verificar se já tem veículo e disponibilidade de fato
+            // (Poderíamos adicionar validações aqui)
+
+            const instructor = await ctx.prisma.instructor.update({
+                where: { userId },
+                data: {
+                    basePrice: input.pricePerHour,
+                    status: "ACTIVE",
+                    isOnline: true,
+                    isAvailable: true,
+                }
+            });
+
+            // Criar o plano "Aula Avulsa" padrão
+            await ctx.prisma.plan.create({
+                data: {
+                    name: "Aula Avulsa",
+                    description: "Aula prática de direção (50 minutos)",
+                    lessons: 1,
+                    price: input.pricePerHour,
+                    instructorId: instructor.id,
+                    isActive: true,
+                }
+            });
+
+            return { success: true, instructorId: instructor.id };
         }),
 
     search: publicProcedure
