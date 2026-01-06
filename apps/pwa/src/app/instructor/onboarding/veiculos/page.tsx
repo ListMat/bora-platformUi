@@ -311,6 +311,11 @@ export default function VeiculosPage() {
                                                 <SelectContent>
                                                     <SelectItem value="manual">Manual</SelectItem>
                                                     <SelectItem value="automatic">Automático</SelectItem>
+                                                    <SelectItem value="cvt">CVT</SelectItem>
+                                                    <SelectItem value="automatizado">Automatizado</SelectItem>
+                                                    <SelectItem value="sequencial">Sequencial</SelectItem>
+                                                    <SelectItem value="dual-clutch">Dual-clutch</SelectItem>
+                                                    <SelectItem value="eletrico">Elétrico</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
