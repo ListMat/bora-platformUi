@@ -23,12 +23,12 @@ enum UserRole {
 }
 
 enum LessonStatus {
-  PENDING    // Aguardando resposta do instrutor
-  SCHEDULED  // Aceita pelo instrutor
-  ACTIVE     // Em andamento
-  FINISHED   // Concluída
-  CANCELLED  // Cancelada
-  EXPIRED    // Expirou (sem resposta em 2 min)
+  PENDING
+  SCHEDULED
+  ACTIVE
+  FINISHED
+  CANCELLED
+  EXPIRED
 }
 
 enum PaymentStatus {
@@ -44,8 +44,8 @@ enum PaymentMethod {
   DINHEIRO
   DEBITO
   CREDITO
-  CREDIT_CARD  // Manter compatibilidade
-  BOLETO       // Manter compatibilidade
+  CREDIT_CARD
+  BOLETO
 }
 
 enum DisputeStatus {
@@ -89,6 +89,21 @@ enum FuelType {
   HIBRIDO
 }
 
+enum ComplaintType {
+  INAPPROPRIATE_BEHAVIOR
+  INADEQUATE_VEHICLE
+  HARASSMENT
+  DANGEROUS_DRIVING
+  OTHER
+}
+
+enum ComplaintStatus {
+  PENDING
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -98,16 +113,13 @@ model User {
   emailVerified DateTime?
   image         String?
   phone         String?
-  password      String?   // Para autenticação com credenciais
+  password      String?
   role          UserRole  @default(STUDENT)
-  
-  // Push notifications
-  pushToken     String?   // Expo push token
+  pushToken     String?
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relations
   accounts      Account[]
   sessions      Session[]
   student       Student?
@@ -170,13 +182,9 @@ model Student {
   city         String?
   state        String?
   zipCode      String?
-  
-  // Gamificação
   points       Int      @default(0)
   level        Int      @default(1)
-  badges       String[] // JSON array de badges
-  
-  // Wallet
+  badges       String[]
   walletBalance Decimal @default(0) @db.Decimal(10, 2)
   
   createdAt    DateTime @default(now())
@@ -191,6 +199,7 @@ model Student {
   bundlePurchases   BundlePurchase[]
   skillEvaluations  SkillEvaluation[]
   walletTransactions WalletTransaction[]
+  complaintsMade     Complaint[]
 
   @@index([userId])
   @@index([cpf])
@@ -204,39 +213,27 @@ model Instructor {
   cnhNumber         String?          @unique
   credentialNumber  String?
   credentialExpiry  DateTime?
-  
-  // Documentos (encriptados)
-  cnhDocument       String?  // URL S3/Supabase
-  credentialDoc     String?  // URL S3/Supabase
-  
-  // Localização
-  cep             String?
-  street          String?
-  neighborhood    String?
-  latitude        Float?
-  longitude       Float?
-  city            String?
-  state           String?
-  
-  // Preço e disponibilidade
-  basePrice         Decimal  @default(0) @db.Decimal(10, 2)
-  isAvailable       Boolean  @default(false)
-  isOnline          Boolean  @default(false) // Toggle online/offline
-  acceptsOwnVehicle Boolean  @default(false) // Aceita carro do aluno
-  
-  // Bio curta (máx 200 caracteres)
+  cnhDocument       String?
+  credentialDoc     String?
+  cep               String?
+  street            String?
+  neighborhood      String?
+  latitude          Float?
+  longitude         Float?
+  city              String?
+  state             String?
+  basePrice         Decimal          @default(0) @db.Decimal(10, 2)
+  isAvailable       Boolean          @default(false)
+  isOnline          Boolean          @default(false)
+  acceptsOwnVehicle Boolean          @default(false)
   bio               String?
-  
-  // Status e métricas
   status            InstructorStatus @default(PENDING_VERIFICATION)
-  averageRating     Float    @default(0)
-  totalLessons      Int      @default(0)
-  
-  // Stripe Connect
-  stripeAccountId      String?  @unique
-  stripeOnboarded      Boolean  @default(false)
-  stripeChargesEnabled Boolean  @default(false)
-  stripePayoutsEnabled Boolean  @default(false)
+  averageRating     Float            @default(0)
+  totalLessons      Int              @default(0)
+  stripeAccountId      String?       @unique
+  stripeOnboarded      Boolean       @default(false)
+  stripeChargesEnabled Boolean       @default(false)
+  stripePayoutsEnabled Boolean       @default(false)
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -247,6 +244,7 @@ model Instructor {
   plans             Plan[]
   ratings           Rating[]
   skillEvaluations  SkillEvaluation[]
+  complaintsReceived Complaint[]
 
   @@index([userId])
   @@index([status])
@@ -257,9 +255,9 @@ model Instructor {
 model InstructorAvailability {
   id           String   @id @default(cuid())
   instructorId String
-  dayOfWeek    Int      // 0-6 (Sunday-Saturday)
-  startTime    String   // HH:mm format
-  endTime      String   // HH:mm format
+  dayOfWeek    Int
+  startTime    String
+  endTime      String
   
   instructor   Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
 
@@ -271,56 +269,34 @@ model Lesson {
   id               String       @id @default(cuid())
   studentId        String
   instructorId     String
-  
-  // Agendamento
   scheduledAt      DateTime
   startedAt        DateTime?
   endedAt          DateTime?
-  duration         Int?         // minutos
-  
-  // Tipo de aula e configurações
-  lessonType       String?      // "1ª Habilitação", "Direção via pública", etc.
-  vehicleId        String?      // ID do veículo (instrutor ou aluno)
+  duration         Int?
+  lessonType       String?
+  vehicleId        String?
   useOwnVehicle    Boolean      @default(false)
-  planId           String?      // ID do plano (1, 5, 10 aulas)
-  
-  // Pagamento
+  planId           String?
   paymentMethod    PaymentMethod @default(PIX)
   installments     Int          @default(1)
-  
-  // Localização
   pickupLatitude   Float?
   pickupLongitude  Float?
   pickupAddress    String?
-  
-  // Localização em tempo real (instrutor)
   currentLatitude  Float?
   currentLongitude Float?
-  
-  // Status e preço
   status           LessonStatus @default(PENDING)
   price            Decimal      @db.Decimal(10, 2)
-  
-  // Bundle payment
   usedBundleCredit Boolean      @default(false)
   bundlePurchaseId String?
-  
-  // Gravação (opcional)
   recordingUrl     String?
   recordingConsent Boolean      @default(false)
-  
-  // Recibo (obrigatório)
   receiptUrl       String?
-  
-  // Pix (geração e confirmação)
-  pixCode          String?   // Código Pix copia e cola
-  pixQrCode        String?   // QR Code em base64
-  pixGeneratedAt   DateTime? // Quando foi gerado
-  pixExpiresAt     DateTime? // Quando expira (30 min)
-  pixPaidAt        DateTime? // Quando foi pago
-  paymentStatus    String    @default("PENDING") // PENDING, PAID, EXPIRED
-  
-  // Notas
+  pixCode          String?
+  pixQrCode        String?
+  pixGeneratedAt   DateTime?
+  pixExpiresAt     DateTime?
+  pixPaidAt        DateTime?
+  paymentStatus    String       @default("PENDING")
   instructorNotes  String?
   studentNotes     String?
   
@@ -345,20 +321,13 @@ model Payment {
   id              String        @id @default(cuid())
   lessonId        String        @unique
   studentId       String
-  
   amount          Decimal       @db.Decimal(10, 2)
   method          PaymentMethod
   status          PaymentStatus @default(PENDING)
-  
-  // Stripe
   stripePaymentId String?       @unique
   stripeCustomerId String?
-  
-  // Pix
   pixQrCode       String?
   pixCopyPaste    String?
-  
-  // Metadata
   metadata        Json?
   
   createdAt       DateTime      @default(now())
@@ -378,15 +347,12 @@ model Payment {
 model Dispute {
   id          String        @id @default(cuid())
   paymentId   String        @unique
-  
   reason      String
   description String?
   status      DisputeStatus @default(OPEN)
-  
-  // Resolução
   resolution  String?
   resolvedAt  DateTime?
-  resolvedBy  String?       // userId do admin
+  resolvedBy  String?
   
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -402,9 +368,7 @@ model Rating {
   lessonId     String   @unique
   studentId    String
   instructorId String
-  
-  // Avaliação
-  rating       Int      // 1-5
+  rating       Int
   comment      String?
   
   createdAt    DateTime @default(now())
@@ -422,8 +386,6 @@ model Referral {
   id         String   @id @default(cuid())
   referrerId String
   referredId String   @unique
-  
-  // Recompensa
   rewardAmount Decimal @default(0) @db.Decimal(10, 2)
   rewardPaid   Boolean @default(false)
   
@@ -439,8 +401,8 @@ model Referral {
 model ActivityLog {
   id        String   @id @default(cuid())
   userId    String
-  action    String   // e.g., "VIEW_DOCUMENT", "DELETE_DATA"
-  resource  String?  // e.g., "CNH", "User Profile"
+  action    String
+  resource  String?
   metadata  Json?
   
   createdAt DateTime @default(now())
@@ -452,23 +414,15 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-// ==================== NOVOS MODELOS - FASE 1 ====================
-
 model Plan {
   id          String   @id @default(cuid())
-  name        String   // "1 Aula", "Pacote 5 Aulas", "Pacote 10 Aulas"
+  name        String
   description String?
-  
-  // Configuração
-  lessons     Int      // 1, 5, 10
+  lessons     Int
   price       Decimal  @db.Decimal(10, 2)
-  discount    Int      @default(0) // % desconto
-  
-  // Status
+  discount    Int      @default(0)
   isActive    Boolean  @default(true)
   featured    Boolean  @default(false)
-  
-  // Relacionamento com Instrutor (Opcional)
   instructorId String?
   instructor   Instructor? @relation(fields: [instructorId], references: [id], onDelete: Cascade)
   
@@ -482,20 +436,14 @@ model Plan {
 
 model Bundle {
   id          String   @id @default(cuid())
-  name        String   // "Pacote 5 Aulas", "Pacote 20 Aulas Premium"
+  name        String
   description String?
-  
-  // Configuração
-  totalLessons Int      // Quantidade de créditos
+  totalLessons Int
   price        Decimal  @db.Decimal(10, 2)
-  discount     Decimal  @default(0) @db.Decimal(5, 2) // % desconto
-  
-  // Validade (opcional)
-  expiryDays   Int?     // Dias para expirar após compra
-  
-  // Status
+  discount     Decimal  @default(0) @db.Decimal(5, 2)
+  expiryDays   Int?
   isActive     Boolean  @default(true)
-  featured     Boolean  @default(false) // Destacar na UI
+  featured     Boolean  @default(false)
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -510,18 +458,12 @@ model BundlePurchase {
   id              String        @id @default(cuid())
   studentId       String
   bundleId        String
-  
-  // Créditos
-  totalCredits    Int           // Créditos totais comprados
+  totalCredits    Int
   usedCredits     Int           @default(0)
-  remainingCredits Int          // Calculado: totalCredits - usedCredits
-  
-  // Pagamento
+  remainingCredits Int
   amount          Decimal       @db.Decimal(10, 2)
   paymentId       String?       @unique
   paymentStatus   PaymentStatus @default(PENDING)
-  
-  // Validade
   expiresAt       DateTime?
   
   createdAt       DateTime      @default(now())
@@ -539,19 +481,13 @@ model BundlePurchase {
 model BundlePayment {
   id                 String             @id @default(cuid())
   bundlePurchaseId   String             @unique
-  
   amount             Decimal            @db.Decimal(10, 2)
   method             PaymentMethod
   status             PaymentStatus      @default(PENDING)
-  
-  // Stripe
   stripePaymentId    String?            @unique
   stripeCustomerId   String?
-  
-  // Pix
   pixQrCode          String?
   pixCopyPaste       String?
-  
   metadata           Json?
   
   createdAt          DateTime           @default(now())
@@ -567,16 +503,11 @@ model BundlePayment {
 model ChatMessage {
   id         String   @id @default(cuid())
   lessonId   String
-  senderId   String   // userId do remetente
-  
+  senderId   String
   content    String   @db.Text
-  
-  // Mídia (foto/áudio)
-  messageType String  @default("text") // "text" | "image" | "audio"
+  messageType String  @default("text")
   mediaUrl    String?
-  mediaDuration Int?  // Duração do áudio em segundos
-  
-  // Status
+  mediaDuration Int?
   isRead     Boolean  @default(false)
   readAt     DateTime?
   
@@ -589,20 +520,13 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-// ==================== NOVOS MODELOS - FASE 2 ====================
-
 model Skill {
   id          String   @id @default(cuid())
-  name        String   // "Baliza", "Conversão", "Controle de Embreagem"
+  name        String
   description String?
-  category    String   // "BASIC", "INTERMEDIATE", "ADVANCED"
-  
-  // Peso para cálculo de progresso geral
+  category    String
   weight      Int      @default(1)
-  
-  // Ordem de exibição
   order       Int      @default(0)
-  
   isActive    Boolean  @default(true)
   
   createdAt   DateTime @default(now())
@@ -620,11 +544,7 @@ model SkillEvaluation {
   studentId    String
   skillId      String
   instructorId String
-  
-  // Avaliação (1-5 estrelas)
-  rating       Int      // 1 = Precisa melhorar, 5 = Excelente
-  
-  // Comentário opcional do instrutor
+  rating       Int
   comment      String?
   
   createdAt    DateTime @default(now())
@@ -634,28 +554,20 @@ model SkillEvaluation {
   skill        Skill      @relation(fields: [skillId], references: [id])
   instructor   Instructor @relation(fields: [instructorId], references: [id])
 
-  @@unique([lessonId, skillId]) // Uma avaliação por skill por aula
+  @@unique([lessonId, skillId])
   @@index([studentId, skillId])
   @@index([instructorId])
   @@map("skill_evaluations")
 }
 
-// ==================== NOVOS MODELOS - FASE 3 ====================
-
 model PaymentSplit {
   id                String   @id @default(cuid())
   paymentId         String   @unique
-  
-  // Valores
   totalAmount       Decimal  @db.Decimal(10, 2)
-  platformFee       Decimal  @db.Decimal(10, 2)  // Taxa da plataforma
-  instructorAmount  Decimal  @db.Decimal(10, 2)  // Valor do instrutor
-  
-  // Stripe
-  transferId        String?  @unique  // ID do Transfer para instrutor
-  transferStatus    String?  // "pending", "paid", "failed"
-  
-  // Timestamps
+  platformFee       Decimal  @db.Decimal(10, 2)
+  instructorAmount  Decimal  @db.Decimal(10, 2)
+  transferId        String?  @unique
+  transferStatus    String?
   transferredAt     DateTime?
   createdAt         DateTime @default(now())
 
@@ -668,18 +580,13 @@ model PaymentSplit {
 model CancellationPolicy {
   id                String   @id @default(cuid())
   lessonId          String   @unique
-  
-  // Policy details
-  cancelledBy       String   // "STUDENT" or "INSTRUCTOR"
+  cancelledBy       String
   cancelledAt       DateTime
   scheduledTime     DateTime
-  hoursBeforeLesson Int      // Quantas horas antes da aula foi cancelado
-  
-  // Penalidades
+  hoursBeforeLesson Int
   penaltyApplied    Boolean  @default(false)
   penaltyAmount     Decimal  @default(0) @db.Decimal(10, 2)
-  penaltyPaidTo     String?  // userId de quem recebeu
-  
+  penaltyPaidTo     String?
   reason            String?
   
   createdAt         DateTime @default(now())
@@ -689,49 +596,31 @@ model CancellationPolicy {
   @@map("cancellation_policies")
 }
 
-// ==================== VEÍCULOS ====================
-
 model Vehicle {
   id               String            @id @default(cuid())
   userId           String
-  
-  // Dados básicos
-  brand            String            // Toyota, Honda, VW, etc.
-  model            String            // Corolla, Civic, Gol, etc.
-  year             Int               // 1980-2026
-  color            String            // Branco, Preto, etc.
-  plateLastFour    String            // 4 últimos caracteres
-  photoUrl         String?           // Foto principal (legacy)
-  photos           String[]          @default([]) // Fotos do veículo
-
-  
-  // Especificações
+  brand            String
+  model            String
+  year             Int
+  color            String
+  plateLastFour    String
+  photoUrl         String?
+  photos           String[]          @default([])
   category         VehicleCategory
   transmission     TransmissionType
   fuel             FuelType
-  engine           String            // "1.0", "2.0 Flex", "Elétrico"
-  horsePower       Int?              // 140
-  
-  // Duplo-pedal (obrigatório para instrutor)
+  engine           String
+  horsePower       Int?
   hasDualPedal     Boolean           @default(false)
-  pedalPhotoUrl    String?           // Foto do pedal (obrigatória se hasDualPedal)
-  
-  // Opções do instrutor
-  acceptStudentCar Boolean           @default(false)  // Só para instrutor
-  
-  // Segurança (array JSON)
-  safetyFeatures   String[]          // ["ABS", "Air-bag duplo", etc.]
-  
-  // Conforto (array JSON)
-  comfortFeatures  String[]          // ["Ar-digital", "Bluetooth", etc.]
-  
-  // Status
-  status           String            @default("active")  // active/inactive
+  pedalPhotoUrl    String?
+  acceptStudentCar Boolean           @default(false)
+  safetyFeatures   String[]
+  comfortFeatures  String[]
+  status           String            @default("active")
   
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   
-  // Relações
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([userId])
@@ -739,13 +628,11 @@ model Vehicle {
   @@map("vehicles")
 }
 
-
-
 model WalletTransaction {
   id          String   @id @default(cuid())
   studentId   String
   amount      Decimal  @db.Decimal(10, 2)
-  type        String   // DEPOSIT, WITHDRAW, PAYMENT, REFUND, BONUS
+  type        String
   description String?
   metadata    Json?
   
@@ -756,4 +643,28 @@ model WalletTransaction {
 
   @@index([studentId])
   @@map("wallet_transactions")
+}
+
+model Complaint {
+  id          String   @id @default(cuid())
+  studentId   String
+  instructorId String
+  type        ComplaintType
+  description String   @db.Text
+  mediaUrls   String[]
+  status      ComplaintStatus @default(PENDING)
+  resolution  String?  @db.Text
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student     Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  instructor  Instructor @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([instructorId])
+  @@index([status])
+  @@map("complaints")
 }
