@@ -5,7 +5,8 @@ import { columns } from "./columns";
 import { api } from "@/lib/api";
 
 export default function PaymentsPage() {
-    const { data: payments, isLoading } = api.admin.getPayments.useQuery();
+    const { data, isLoading } = api.admin.getPayments.useQuery();
+    const payments = (data as any)?.json || data || [];
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">

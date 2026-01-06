@@ -190,6 +190,7 @@ model Student {
   referredBy        Referral?        @relation("Referred")
   bundlePurchases   BundlePurchase[]
   skillEvaluations  SkillEvaluation[]
+  walletTransactions WalletTransaction[]
 
   @@index([userId])
   @@index([cpf])
@@ -738,3 +739,21 @@ model Vehicle {
   @@map("vehicles")
 }
 
+
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  studentId   String
+  amount      Decimal  @db.Decimal(10, 2)
+  type        String   // DEPOSIT, WITHDRAW, PAYMENT, REFUND, BONUS
+  description String?
+  metadata    Json?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@map("wallet_transactions")
+}

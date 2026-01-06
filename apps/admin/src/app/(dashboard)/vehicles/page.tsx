@@ -5,7 +5,8 @@ import { columns } from "./columns";
 import { api } from "@/lib/api";
 
 export default function VehiclesPage() {
-    const { data: vehicles, isLoading } = api.admin.getVehicles.useQuery();
+    const { data, isLoading } = api.admin.getVehicles.useQuery();
+    const vehicles = (data as any)?.json || data || [];
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">

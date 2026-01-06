@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function LessonsPage() {
     const [status, setStatus] = useState<string>("all");
-    const { data: lessons, isLoading } = api.admin.getLessons.useQuery({ status });
+    const { data, isLoading } = api.admin.getLessons.useQuery({ status });
+    const lessons = (data as any)?.json || data || [];
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">

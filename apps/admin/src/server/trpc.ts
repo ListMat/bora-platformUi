@@ -14,14 +14,14 @@ const createInnerTRPCContext = (opts: CreateContextOptions) => {
     };
 };
 
-export const createTRPCContext = async () => {
+export const createTRPCContext = async (opts?: any) => {
     // Para NextAuth v5, a sessão será obtida dentro dos procedures
     return createInnerTRPCContext({
         session: null,
     });
 };
 
-const t = initTRPC.context<typeof createTRPCContext>().create({
+const t = initTRPC.context<Awaited<ReturnType<typeof createTRPCContext>>>().create({
     transformer: superjson,
     errorFormatter({ shape, error }) {
         return {
@@ -43,9 +43,7 @@ const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
     // TODO: Implementar autenticação com NextAuth v5
     // Por enquanto, permitir acesso sem autenticação para desenvolvimento
     return next({
-        ctx: {
-            session: ctx.session,
-        },
+        ctx, // Passa o contexto completo (com prisma)
     });
 });
 

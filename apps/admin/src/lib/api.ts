@@ -17,7 +17,8 @@ export function getClientConfig() {
         links: [
             loggerLink({
                 enabled: (opts) =>
-                    process.env.NODE_ENV === "development" ||
+                    // Habilitar logs apenas para erros em desenvolvimento para evitar poluição
+                    (process.env.NODE_ENV === "development" && typeof window !== "undefined" && false) ||
                     (opts.direction === "down" && opts.result instanceof Error),
             }),
             httpBatchLink({

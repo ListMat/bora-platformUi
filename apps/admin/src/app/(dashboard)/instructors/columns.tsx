@@ -97,7 +97,8 @@ function ActionsCell({ instructor }: { instructor: Instructor }) {
 
 export const columns: ColumnDef<Instructor>[] = [
     {
-        accessorKey: "user.name",
+        id: "instructorName",
+        accessorFn: (row) => row.user.name || "Sem Nome",
         header: "Instrutor",
         cell: ({ row }) => {
             const instructor = row.original;
@@ -108,7 +109,7 @@ export const columns: ColumnDef<Instructor>[] = [
                         <AvatarFallback>{instructor.user.name?.charAt(0) || "I"}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <div className="font-medium">{instructor.user.name}</div>
+                        <div className="font-medium">{instructor.user.name || "Sem Nome"}</div>
                         <div className="text-sm text-muted-foreground">{instructor.user.email}</div>
                     </div>
                 </div>
@@ -148,7 +149,7 @@ export const columns: ColumnDef<Instructor>[] = [
         accessorKey: "basePrice",
         header: "Preço/Hora",
         cell: ({ row }) => {
-            const price = row.getValue("basePrice") as number;
+            const price = Number(row.getValue("basePrice") || 0);
             return <div>R$ {price.toFixed(2)}</div>;
         },
     },

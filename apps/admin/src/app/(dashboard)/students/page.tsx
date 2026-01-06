@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 export default function StudentsPage() {
-    const { data: students, isLoading } = api.admin.getStudents.useQuery();
+    const { data, isLoading } = api.admin.getStudents.useQuery();
+
+    // SuperJSON retorna { json: data, meta: ... }
+    const students = (data as any)?.json || data || [];
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
@@ -22,8 +25,7 @@ export default function StudentsPage() {
 
             <DataTable
                 columns={columns}
-                // @ts-ignore - Prisma Decimal type mismatch
-                data={students || []}
+                data={students}
                 isLoading={isLoading}
                 searchKey="userName"
                 searchPlaceholder="Buscar por nome..."

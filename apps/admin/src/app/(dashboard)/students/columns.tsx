@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { StudentActions } from "./student-actions";
 
 // Tipo inferido do retorno da API (simplificado para UI)
 export type Student = {
@@ -43,7 +44,7 @@ export const columns: ColumnDef<Student>[] = [
     },
     {
         id: "userName",
-        accessorFn: (row) => row.user.name,
+        accessorFn: (row) => row.user.name || "Sem Nome",
         header: "Aluno",
         cell: ({ row }) => {
             const user = row.original.user;
@@ -51,10 +52,10 @@ export const columns: ColumnDef<Student>[] = [
                 <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
                         <AvatarImage src={user.image || ""} alt={user.name || ""} />
-                        <AvatarFallback>{user.name?.slice(0, 2).toUpperCase()}</AvatarFallback>
+                        <AvatarFallback>{(user.name || "A").slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                        <span className="font-medium">{user.name}</span>
+                        <span className="font-medium">{user.name || "Sem Nome"}</span>
                         <span className="text-xs text-muted-foreground">{user.email}</span>
                     </div>
                 </div>
@@ -94,5 +95,9 @@ export const columns: ColumnDef<Student>[] = [
         cell: ({ row }) => {
             return new Date(row.original.createdAt).toLocaleDateString("pt-BR");
         },
+    },
+    {
+        id: "actions",
+        cell: ({ row }) => <StudentActions student={row.original} />,
     },
 ];

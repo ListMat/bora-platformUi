@@ -10,7 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function InstructorsPage() {
     const [status, setStatus] = useState<string>("all");
-    const { data: instructors, isLoading } = api.admin.getInstructors.useQuery({ status });
+    const { data, isLoading } = api.admin.getInstructors.useQuery(); // Sem input
+    const instructors = (data as any)?.json || data || [];
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
@@ -41,7 +42,7 @@ export default function InstructorsPage() {
                         columns={columns}
                         data={instructors || []}
                         isLoading={isLoading}
-                        searchKey="user.name"
+                        searchKey="instructorName"
                         searchPlaceholder="Buscar por nome..."
                     />
                 </TabsContent>
