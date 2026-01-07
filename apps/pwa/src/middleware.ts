@@ -13,10 +13,9 @@ export default withAuth(
         }
 
         if (path.startsWith('/student') && token?.role !== 'STUDENT' && token?.role !== 'ADMIN') {
-            // Se for instrutor tentando acessar área de aluno, talvez permitir? 
-            // Por enquanto, vamos ser estritos ou redirecionar para dashboard correto
+            // Se for instrutor tentando acessar área de aluno, redirecionar para onboarding
             if (token?.role === 'INSTRUCTOR') {
-                return NextResponse.redirect(new URL('/instructor/dashboard', req.url));
+                return NextResponse.redirect(new URL('/instructor/onboarding/documentos', req.url));
             }
         }
 

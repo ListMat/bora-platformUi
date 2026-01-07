@@ -57,6 +57,7 @@ export default function HorariosPage() {
     });
     const [loadingCep, setLoadingCep] = useState(false);
     const [error, setError] = useState("");
+    const [coords, setCoords] = useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
 
     const addScheduleSlot = () => {
         setScheduleSlots([
@@ -102,6 +103,7 @@ export default function HorariosPage() {
         setError("");
 
         try {
+            // 1. Buscar endereço via ViaCEP
             const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
             const data = await response.json();
 
@@ -110,14 +112,34 @@ export default function HorariosPage() {
                 return;
             }
 
-            setAddress({
+            const newAddress = {
                 street: data.logradouro || "",
                 neighborhood: data.bairro || "",
                 city: data.localidade || "",
                 state: data.uf || "",
-            });
+            };
+
+            setAddress(newAddress);
+
+            // 2. Geocodificar usando Mapbox
+            const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+            if (token && newAddress.street && newAddress.city) {
+                const fullAddress = `${newAddress.street}, ${newAddress.neighborhood}, ${newAddress.city} - ${newAddress.state}, Brasil`;
+                const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(fullAddress)}.json?access_token=${token}&country=br&limit=1`;
+
+                const geoRes = await fetch(mapboxUrl);
+                const geoData = await geoRes.json();
+
+                if (geoData.features && geoData.features.length > 0) {
+                    const [lng, lat] = geoData.features[0].center;
+                    setCoords({ lat, lng });
+                    console.log("Geocoded:", { lat, lng });
+                }
+            }
+
         } catch (err) {
-            setError("Erro ao buscar CEP");
+            setError("Erro ao buscar CEP ou geolocalização");
+            console.error(err);
         } finally {
             setLoadingCep(false);
         }
@@ -160,25 +182,33 @@ export default function HorariosPage() {
         setIsSubmitting(true);
         setError("");
 
+        console.log('[handleSubmit] Iniciando...', { cep, address, coords, scheduleSlots });
+
         try {
-            await updateAvailability.mutateAsync({
-                cep,
+            // Construir objeto de input com tipos corretos
+            const inputData = {
+                cep: cep,
                 street: address.street,
                 neighborhood: address.neighborhood,
                 city: address.city,
                 state: address.state,
+                ...(coords.lat !== null && coords.lng !== null ? {
+                    latitude: coords.lat,
+                    longitude: coords.lng,
+                } : {}),
                 weeklyHours: scheduleSlots.map(slot => ({
                     dayOfWeek: parseInt(slot.day),
                     startTime: slot.startTime,
                     endTime: slot.endTime,
                 })),
-            });
+            };
+
+            await updateAvailability.mutateAsync(inputData);
 
             // Redirecionar para veiculos
             router.push("/instructor/onboarding/veiculos");
         } catch (err) {
-            console.error(err);
-            setError("Erro ao salvar horários. Tente novamente.");
+            setError(`Erro ao salvar horários: ${err instanceof Error ? err.message : 'Erro desconhecido'}`);
         } finally {
             setIsSubmitting(false);
         }

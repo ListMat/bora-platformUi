@@ -44,7 +44,7 @@ export default function SignInPage() {
 
             // Redirecionar baseado no role
             if (isInstructor) {
-                router.push('/instructor/dashboard');
+                router.push('/instructor/onboarding/documentos');
             } else {
                 router.push('/search');
             }
@@ -57,7 +57,7 @@ export default function SignInPage() {
     const handleGoogleSignIn = async () => {
         setIsLoading(true);
         await signIn('google', {
-            callbackUrl: isInstructor ? '/instructor/dashboard' : '/search'
+            callbackUrl: isInstructor ? '/instructor/onboarding/documentos' : '/search'
         });
     };
 

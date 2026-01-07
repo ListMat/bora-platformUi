@@ -62,7 +62,7 @@ export default function InstructorSignupPage() {
             });
 
             if (loginResult?.ok) {
-                window.location.href = '/instructor/onboarding/first-plan';
+                window.location.href = '/instructor/onboarding/documentos';
             } else {
                 throw new Error('Conta criada, mas erro ao fazer login automático. Tente entrar manualmente.');
             }

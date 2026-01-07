@@ -6,9 +6,16 @@ export const instructorRouter = createTRPCRouter({
     getStatus: protectedProcedure.query(async ({ ctx }) => {
         const instructor = await ctx.prisma.instructor.findUnique({
             where: { userId: ctx.session.user.id },
-            // Removendo includes complexos para evitar erros de tipagem/schema por enquanto
         });
-        return instructor;
+
+        if (!instructor) return null;
+
+        // Converter Decimal para number para serialização
+        return {
+            ...instructor,
+            basePrice: instructor.basePrice ? Number(instructor.basePrice) : 0,
+            averageRating: instructor.averageRating || 0,
+        };
     }),
 
     updateAvailabilityAndLocation: protectedProcedure
@@ -18,6 +25,8 @@ export const instructorRouter = createTRPCRouter({
             neighborhood: z.string(),
             city: z.string(),
             state: z.string(),
+            latitude: z.number().optional(),
+            longitude: z.number().optional(),
             weeklyHours: z.array(z.object({
                 dayOfWeek: z.number(),
                 startTime: z.string(),
@@ -25,54 +34,64 @@ export const instructorRouter = createTRPCRouter({
             })),
         }))
         .mutation(async ({ ctx, input }) => {
-            const { weeklyHours, cep, street, neighborhood, city, state } = input;
-            const userId = ctx.session.user.id;
+            console.log('[updateAvailabilityAndLocation] Raw input received:', JSON.stringify(input, null, 2));
 
-            // 1. Geocodificar (simplificado)
-            let lat: number | null = null;
-            let lng: number | null = null;
-            // ... (Lógica de geocodificação poderia ser extraída para um helper)
+            try {
+                const { weeklyHours, cep, street, neighborhood, city, state, latitude, longitude } = input;
+                const userId = ctx.session.user.id;
 
-            // 2. Upsert Instructor apenas com dados de local e disponibilidade
-            return ctx.prisma.instructor.upsert({
-                where: { userId },
-                create: {
-                    userId,
-                    cep,
-                    street,
-                    neighborhood,
-                    city,
-                    state,
-                    basePrice: 0, // Será definido depois
-                    status: "PENDING_VERIFICATION",
-                    availability: {
-                        createMany: {
-                            data: weeklyHours.map(slot => ({
-                                dayOfWeek: slot.dayOfWeek,
-                                startTime: slot.startTime,
-                                endTime: slot.endTime,
-                            }))
+                const result = await ctx.prisma.instructor.upsert({
+                    where: { userId },
+                    create: {
+                        userId,
+                        cep,
+                        street,
+                        neighborhood,
+                        city,
+                        state,
+                        latitude,
+                        longitude,
+                        basePrice: 0,
+                        status: "PENDING_VERIFICATION",
+                        availability: {
+                            createMany: {
+                                data: weeklyHours.map(slot => ({
+                                    dayOfWeek: slot.dayOfWeek,
+                                    startTime: slot.startTime,
+                                    endTime: slot.endTime,
+                                }))
+                            }
+                        }
+                    },
+                    update: {
+                        cep,
+                        street,
+                        neighborhood,
+                        city,
+                        state,
+                        latitude,
+                        longitude,
+                        availability: {
+                            deleteMany: {},
+                            createMany: {
+                                data: weeklyHours.map(slot => ({
+                                    dayOfWeek: slot.dayOfWeek,
+                                    startTime: slot.startTime,
+                                    endTime: slot.endTime,
+                                }))
+                            }
                         }
                     }
-                },
-                update: {
-                    cep,
-                    street,
-                    neighborhood,
-                    city,
-                    state,
-                    availability: {
-                        deleteMany: {},
-                        createMany: {
-                            data: weeklyHours.map(slot => ({
-                                dayOfWeek: slot.dayOfWeek,
-                                startTime: slot.startTime,
-                                endTime: slot.endTime,
-                            }))
-                        }
-                    }
-                }
-            });
+                });
+
+                // Retornar apenas dados serializáveis (sem Decimal)
+                return {
+                    success: true,
+                    instructorId: result.id
+                };
+            } catch (error) {
+                throw error;
+            }
         }),
 
     activateProfile: protectedProcedure
@@ -108,6 +127,38 @@ export const instructorRouter = createTRPCRouter({
             });
 
             return { success: true, instructorId: instructor.id };
+        }),
+
+    updateProfile: protectedProcedure
+        .input(z.object({
+            name: z.string().min(1).optional(),
+            bio: z.string().optional(),
+            basePrice: z.number().min(0).optional(),
+        }))
+        .mutation(async ({ ctx, input }) => {
+            const userId = ctx.session.user.id;
+
+            // Atualizar User se name foi fornecido
+            if (input.name) {
+                await ctx.prisma.user.update({
+                    where: { id: userId },
+                    data: { name: input.name },
+                });
+            }
+
+            // Atualizar Instructor
+            const instructor = await ctx.prisma.instructor.update({
+                where: { userId },
+                data: {
+                    ...(input.bio !== undefined && { bio: input.bio }),
+                    ...(input.basePrice !== undefined && { basePrice: input.basePrice }),
+                },
+            });
+
+            return {
+                success: true,
+                instructorId: instructor.id,
+            };
         }),
 
     search: publicProcedure

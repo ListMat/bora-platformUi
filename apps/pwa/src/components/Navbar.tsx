@@ -39,7 +39,9 @@ export default function AppNavbar() {
 
 
     // Determina o link do dashboard baseado na role
-    const dashboardLink = user?.role === 'INSTRUCTOR' ? '/instructor/onboarding/first-plan' : '/student/dashboard';
+    // Para instrutores, sempre começa no início do onboarding (documentos)
+    // TODO: Implementar lógica para verificar em qual etapa o instrutor parou
+    const dashboardLink = user?.role === 'INSTRUCTOR' ? '/instructor/onboarding/documentos' : '/student/dashboard';
 
     return (
         <nav className="border-b bg-background sticky top-0 z-50">

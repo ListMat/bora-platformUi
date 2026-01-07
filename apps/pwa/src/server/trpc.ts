@@ -16,7 +16,7 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 };
 
 const t = initTRPC.context<typeof createTRPCContext>().create({
-    transformer: superjson,
+    // transformer: superjson, // Desabilitado - causava problemas de serialização
     errorFormatter({ shape, error }) {
         return {
             ...shape,

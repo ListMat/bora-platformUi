@@ -17,7 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     url: "/api/trpc",
                 }),
             ],
-            transformer: superjson,
+            // transformer: superjson, // Temporariamente desabilitado
         })
     );
 

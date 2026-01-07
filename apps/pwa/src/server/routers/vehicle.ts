@@ -14,10 +14,12 @@ export const vehicleRouter = createTRPCRouter({
                 plateLastFour: z.string().length(4, "Placa deve ter 4 caracteres"),
                 category: z.enum(["HATCH", "SEDAN", "SUV", "PICKUP", "SPORTIVO", "COMPACTO", "ELETRICO", "MOTO"]).optional(),
                 fuel: z.enum(["GASOLINA", "ETANOL", "FLEX", "DIESEL", "ELETRICO", "HIBRIDO"]).optional(),
+                photoUrl: z.string().optional(),
+                photos: z.array(z.string()).optional(),
             })
         )
         .mutation(async ({ ctx, input }) => {
-            return ctx.prisma.vehicle.create({
+            const vehicle = await ctx.prisma.vehicle.create({
                 data: {
                     userId: ctx.session.user.id,
                     brand: input.brand,
@@ -28,10 +30,17 @@ export const vehicleRouter = createTRPCRouter({
                     plateLastFour: input.plateLastFour.toUpperCase(),
                     category: input.category || "SEDAN",
                     fuel: input.fuel || "FLEX",
+                    photoUrl: input.photoUrl,
+                    photos: input.photos || [],
                     engine: "1.0", // Valor padrão
                     status: "active",
                 },
             });
+
+            return {
+                success: true,
+                vehicleId: vehicle.id
+            };
         }),
 
     // Listar veículos do usuário
