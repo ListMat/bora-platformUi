@@ -43,7 +43,7 @@ export default function AlunosPage() {
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [depositAmount, setDepositAmount] = useState("");
 
-    const { data: students, isLoading } = trpc.admin.getStudents.useQuery({
+    const { data: students, isLoading, refetch: refetchStudents } = trpc.admin.getStudents.useQuery({
         limit: 50,
         skip: 0,
     });
@@ -70,6 +70,25 @@ export default function AlunosPage() {
         }
     );
 
+    const depositMutation = trpc.admin.depositCredit.useMutation({
+        onSuccess: () => {
+            toast({
+                title: "Depósito realizado",
+                description: `R$ ${parseFloat(depositAmount).toFixed(2)} depositado na conta de ${selectedStudent?.user.name}`,
+            });
+            setShowDepositDialog(false);
+            setDepositAmount("");
+            refetchStudents(); // Atualizar lista de alunos
+        },
+        onError: (error) => {
+            toast({
+                title: "Erro ao depositar",
+                description: error.message,
+                variant: "destructive",
+            });
+        },
+    });
+
     const filteredStudents = students?.filter((student) => {
         if (!searchQuery) return true;
         const query = searchQuery.toLowerCase();
@@ -91,13 +110,11 @@ export default function AlunosPage() {
             return;
         }
 
-        // Aqui você implementaria a lógica de depósito
-        toast({
-            title: "Depósito realizado",
-            description: `R$ ${amount.toFixed(2)} depositado na conta de ${selectedStudent?.user.name}`,
+        depositMutation.mutate({
+            studentId: selectedStudent.id,
+            amount,
+            description: `Depósito administrativo de R$ ${amount.toFixed(2)}`,
         });
-        setShowDepositDialog(false);
-        setDepositAmount("");
     };
 
     return (
@@ -486,9 +503,18 @@ export default function AlunosPage() {
                         >
                             Cancelar
                         </Button>
-                        <Button onClick={handleDeposit}>
-                            <Wallet className="mr-2 h-4 w-4" />
-                            Confirmar Depósito
+                        <Button onClick={handleDeposit} disabled={depositMutation.isLoading}>
+                            {depositMutation.isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Processando...
+                                </>
+                            ) : (
+                                <>
+                                    <Wallet className="mr-2 h-4 w-4" />
+                                    Confirmar Depósito
+                                </>
+                            )}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

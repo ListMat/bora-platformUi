@@ -486,7 +486,60 @@ export const adminRouter = router({
         },
       });
 
+
       return payments;
+    }),
+
+  // Depositar crédito na conta do aluno
+  depositCredit: adminProcedure
+    .input(
+      z.object({
+        studentId: z.string(),
+        amount: z.number().positive(),
+        description: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Atualizar saldo do aluno
+      const student = await ctx.prisma.student.update({
+        where: { id: input.studentId },
+        data: {
+          walletBalance: {
+            increment: input.amount,
+          },
+        },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      // Criar transação na carteira
+      await ctx.prisma.walletTransaction.create({
+        data: {
+          studentId: input.studentId,
+          amount: input.amount,
+          type: "DEPOSIT",
+          description: input.description || `Depósito administrativo de R$ ${input.amount.toFixed(2)}`,
+          status: "COMPLETED",
+        },
+      });
+
+      // Criar notificação para o aluno
+      await ctx.prisma.notification.create({
+        data: {
+          userId: student.userId,
+          type: "PAYMENT_RECEIVED",
+          title: "Crédito Adicionado",
+          message: `R$ ${input.amount.toFixed(2)} foi adicionado à sua conta.`,
+        },
+      });
+
+      return student;
     }),
 });
 
