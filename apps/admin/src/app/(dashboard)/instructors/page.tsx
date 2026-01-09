@@ -45,6 +45,7 @@ export default function InstrutoresPage() {
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [showSuspendDialog, setShowSuspendDialog] = useState(false);
     const [showActivateDialog, setShowActivateDialog] = useState(false);
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const [selectedInstructor, setSelectedInstructor] = useState<any>(null);
 
     const { data: instructors, isLoading, refetch } = trpc.admin.getInstructors.useQuery({
@@ -208,11 +209,14 @@ export default function InstrutoresPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/instrutores/${instructor.id}`}>
-                                                            <Eye className="mr-2 h-4 w-4" />
-                                                            Ver Detalhes
-                                                        </Link>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedInstructor(instructor);
+                                                            setShowDetailsDialog(true);
+                                                        }}
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        Ver Detalhes
                                                     </DropdownMenuItem>
                                                     {instructor.status === "ACTIVE" && (
                                                         <DropdownMenuItem
@@ -395,6 +399,135 @@ export default function InstrutoresPage() {
                             ) : (
                                 "Confirmar Ativação"
                             )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Detalhes */}
+            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Detalhes do Instrutor</DialogTitle>
+                        <DialogDescription>
+                            Informações completas do instrutor
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedInstructor && (
+                        <div className="space-y-6 py-4">
+                            {/* Informações Básicas */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Nome:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedInstructor.user.name || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Email:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedInstructor.user.email}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">CPF:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedInstructor.cpf || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Telefone:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedInstructor.user.phone || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Cidade:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedInstructor.city || "N/A"}, {selectedInstructor.state || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Status:</p>
+                                    {getStatusBadge(selectedInstructor.status)}
+                                </div>
+                            </div>
+
+                            {/* Estatísticas */}
+                            <div className="border-t pt-4">
+                                <h3 className="font-semibold mb-4">Estatísticas</h3>
+                                <div className="grid grid-cols-3 gap-4 text-center">
+                                    <div className="p-4 bg-muted rounded-lg">
+                                        <p className="text-2xl font-bold">{selectedInstructor.totalLessons}</p>
+                                        <p className="text-sm text-muted-foreground">Aulas</p>
+                                    </div>
+                                    <div className="p-4 bg-muted rounded-lg">
+                                        <p className="text-2xl font-bold">
+                                            {selectedInstructor.averageRating > 0
+                                                ? selectedInstructor.averageRating.toFixed(1)
+                                                : "N/A"}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">Avaliação</p>
+                                    </div>
+                                    <div className="p-4 bg-muted rounded-lg">
+                                        <p className="text-2xl font-bold">
+                                            R$ {selectedInstructor.basePrice?.toFixed(2) || "0.00"}
+                                        </p>
+                                        <p className="text-sm text-muted-foreground">Preço Base</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Bio */}
+                            {selectedInstructor.bio && (
+                                <div className="border-t pt-4">
+                                    <h3 className="font-semibold mb-2">Bio</h3>
+                                    <p className="text-sm text-muted-foreground">{selectedInstructor.bio}</p>
+                                </div>
+                            )}
+
+                            {/* Informações Adicionais */}
+                            <div className="border-t pt-4">
+                                <h3 className="font-semibold mb-4">Informações Adicionais</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">CNH:</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedInstructor.cnhNumber || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">Data de Nascimento:</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedInstructor.birthDate
+                                                ? new Date(selectedInstructor.birthDate).toLocaleDateString("pt-BR")
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">Cadastrado em:</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {new Date(selectedInstructor.createdAt).toLocaleDateString("pt-BR")}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowDetailsDialog(false);
+                                setSelectedInstructor(null);
+                            }}
+                        >
+                            Fechar
+                        </Button>
+                        <Button asChild>
+                            <Link href={`/instrutores/${selectedInstructor?.id}`}>
+                                Ver Página Completa
+                            </Link>
                         </Button>
                     </DialogFooter>
                 </DialogContent>
