@@ -29,10 +29,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Search, MoreVertical, Eye, Ban, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function InstrutoresPage() {
+    const { toast } = useToast();
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
+    const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+    const [showActivateDialog, setShowActivateDialog] = useState(false);
+    const [selectedInstructor, setSelectedInstructor] = useState<any>(null);
 
     const { data: instructors, isLoading, refetch } = trpc.admin.getInstructors.useQuery({
         status: statusFilter === "ALL" ? undefined : statusFilter,
@@ -40,13 +53,39 @@ export default function InstrutoresPage() {
 
     const suspendMutation = trpc.instructor.suspend.useMutation({
         onSuccess: () => {
+            toast({
+                title: "Instrutor suspenso",
+                description: "O instrutor foi suspenso com sucesso.",
+            });
+            setShowSuspendDialog(false);
+            setSelectedInstructor(null);
             refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: "Erro ao suspender",
+                description: error.message,
+                variant: "destructive",
+            });
         },
     });
 
     const approveMutation = trpc.instructor.approve.useMutation({
         onSuccess: () => {
+            toast({
+                title: "Instrutor ativado",
+                description: "O instrutor foi ativado com sucesso.",
+            });
+            setShowActivateDialog(false);
+            setSelectedInstructor(null);
             refetch();
+        },
+        onError: (error) => {
+            toast({
+                title: "Erro ao ativar",
+                description: error.message,
+                variant: "destructive",
+            });
         },
     });
 
@@ -177,11 +216,10 @@ export default function InstrutoresPage() {
                                                     </DropdownMenuItem>
                                                     {instructor.status === "ACTIVE" && (
                                                         <DropdownMenuItem
-                                                            onClick={() =>
-                                                                suspendMutation.mutate({
-                                                                    instructorId: instructor.id,
-                                                                })
-                                                            }
+                                                            onClick={() => {
+                                                                setSelectedInstructor(instructor);
+                                                                setShowSuspendDialog(true);
+                                                            }}
                                                             className="text-destructive"
                                                         >
                                                             <Ban className="mr-2 h-4 w-4" />
@@ -191,11 +229,10 @@ export default function InstrutoresPage() {
                                                     {(instructor.status === "SUSPENDED" ||
                                                         instructor.status === "INACTIVE") && (
                                                             <DropdownMenuItem
-                                                                onClick={() =>
-                                                                    approveMutation.mutate({
-                                                                        instructorId: instructor.id,
-                                                                    })
-                                                                }
+                                                                onClick={() => {
+                                                                    setSelectedInstructor(instructor);
+                                                                    setShowActivateDialog(true);
+                                                                }}
                                                             >
                                                                 <CheckCircle className="mr-2 h-4 w-4" />
                                                                 Reativar
@@ -215,6 +252,153 @@ export default function InstrutoresPage() {
                     )}
                 </CardContent>
             </Card>
+
+            {/* Modal de Suspender */}
+            <Dialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Suspender Instrutor</DialogTitle>
+                        <DialogDescription>
+                            Tem certeza que deseja suspender este instrutor?
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedInstructor && (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Nome:</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedInstructor.user.name || "N/A"}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Email:</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedInstructor.user.email}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Total de Aulas:</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedInstructor.totalLessons}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Avaliação:</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedInstructor.averageRating > 0
+                                        ? `⭐ ${selectedInstructor.averageRating.toFixed(1)}`
+                                        : "N/A"}
+                                </p>
+                            </div>
+                            <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                                <p className="text-sm text-destructive">
+                                    ⚠️ O instrutor não poderá dar aulas até ser reativado.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowSuspendDialog(false);
+                                setSelectedInstructor(null);
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={() => {
+                                if (selectedInstructor) {
+                                    suspendMutation.mutate({
+                                        instructorId: selectedInstructor.id,
+                                    });
+                                }
+                            }}
+                            disabled={suspendMutation.isLoading}
+                        >
+                            {suspendMutation.isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Suspendendo...
+                                </>
+                            ) : (
+                                "Confirmar Suspensão"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Ativar */}
+            <Dialog open={showActivateDialog} onOpenChange={setShowActivateDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Ativar Instrutor</DialogTitle>
+                        <DialogDescription>
+                            Tem certeza que deseja ativar este instrutor?
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedInstructor && (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Nome:</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedInstructor.user.name || "N/A"}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Email:</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedInstructor.user.email}
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <p className="text-sm font-medium">Status Atual:</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {selectedInstructor.status}
+                                </p>
+                            </div>
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <p className="text-sm text-green-700">
+                                    ✅ O instrutor poderá dar aulas novamente após a ativação.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowActivateDialog(false);
+                                setSelectedInstructor(null);
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                if (selectedInstructor) {
+                                    approveMutation.mutate({
+                                        instructorId: selectedInstructor.id,
+                                    });
+                                }
+                            }}
+                            disabled={approveMutation.isLoading}
+                        >
+                            {approveMutation.isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Ativando...
+                                </>
+                            ) : (
+                                "Confirmar Ativação"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
