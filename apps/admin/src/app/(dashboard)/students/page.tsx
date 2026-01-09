@@ -143,6 +143,7 @@ export default function AlunosPage() {
                                     <TableHead>Email</TableHead>
                                     <TableHead>CPF</TableHead>
                                     <TableHead>Cidade</TableHead>
+                                    <TableHead>Saldo</TableHead>
                                     <TableHead>Total de Aulas</TableHead>
                                     <TableHead>Cadastrado em</TableHead>
                                     <TableHead className="text-right">Ações</TableHead>
@@ -158,6 +159,11 @@ export default function AlunosPage() {
                                         <TableCell>{student.cpf || "N/A"}</TableCell>
                                         <TableCell>
                                             {student.city || "N/A"}, {student.state || "N/A"}
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="font-medium text-green-600">
+                                                R$ {Number(student.walletBalance || 0).toFixed(2)}
+                                            </span>
                                         </TableCell>
                                         <TableCell>{student._count?.lessons || 0}</TableCell>
                                         <TableCell>
