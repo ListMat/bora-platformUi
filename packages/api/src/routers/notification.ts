@@ -1,232 +1,150 @@
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
-
-// Cliente Expo Push Notifications
-const sendPushNotification = async (
-  pushToken: string,
-  title: string,
-  body: string,
-  data?: any
-) => {
-  const message = {
-    to: pushToken,
-    sound: "default",
-    title,
-    body,
-    data,
-    priority: "high",
-  };
-
-  try {
-    const response = await fetch("https://exp.host/--/api/v2/push/send", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Accept-encoding": "gzip, deflate",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(message),
-    });
-
-    const result = await response.json();
-    console.log("Push notification sent:", result);
-    return result;
-  } catch (error) {
-    console.error("Error sending push notification:", error);
-    throw error;
-  }
-};
+import { router, protectedProcedure, adminProcedure } from "../trpc";
+import { NotificationType } from "@bora/db";
 
 export const notificationRouter = router({
-  // Registrar token de push notification
-  registerToken: protectedProcedure
+  // Obter notificações do usuário
+  getMyNotifications: protectedProcedure
     .input(
       z.object({
-        token: z.string(),
+        limit: z.number().min(1).max(100).default(20),
+        skip: z.number().min(0).default(0),
+        unreadOnly: z.boolean().default(false),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const where: any = {
+        userId: ctx.session.user.id,
+      };
+
+      if (input.unreadOnly) {
+        where.read = false;
+      }
+
+      const [notifications, total, unreadCount] = await Promise.all([
+        ctx.prisma.notification.findMany({
+          where,
+          take: input.limit,
+          skip: input.skip,
+          orderBy: { createdAt: "desc" },
+        }),
+        ctx.prisma.notification.count({ where }),
+        ctx.prisma.notification.count({
+          where: {
+            userId: ctx.session.user.id,
+            read: false,
+          },
+        }),
+      ]);
+
+      return {
+        notifications,
+        total,
+        unreadCount,
+        hasMore: input.skip + input.limit < total,
+      };
+    }),
+
+  // Marcar notificação como lida
+  markAsRead: protectedProcedure
+    .input(
+      z.object({
+        notificationId: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const user = await ctx.prisma.user.findUnique({
-        where: { email: ctx.session.user.email! },
+      const notification = await ctx.prisma.notification.update({
+        where: {
+          id: input.notificationId,
+          userId: ctx.session.user.id, // Garantir que é do usuário
+        },
+        data: {
+          read: true,
+          readAt: new Date(),
+        },
       });
 
-      if (!user) {
-        throw new Error("User not found");
-      }
+      return notification;
+    }),
 
-      // Salvar token no banco
-      await ctx.prisma.user.update({
-        where: { id: user.id },
+  // Marcar todas como lidas
+  markAllAsRead: protectedProcedure
+    .mutation(async ({ ctx }) => {
+      await ctx.prisma.notification.updateMany({
+        where: {
+          userId: ctx.session.user.id,
+          read: false,
+        },
         data: {
-          pushToken: input.token,
+          read: true,
+          readAt: new Date(),
         },
       });
 
       return { success: true };
     }),
 
-  // Enviar notificação para um usuário específico
-  sendToUser: protectedProcedure
+  // Deletar notificação
+  deleteNotification: protectedProcedure
+    .input(
+      z.object({
+        notificationId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.prisma.notification.delete({
+        where: {
+          id: input.notificationId,
+          userId: ctx.session.user.id,
+        },
+      });
+
+      return { success: true };
+    }),
+
+  // Criar notificação (admin ou sistema)
+  createNotification: adminProcedure
     .input(
       z.object({
         userId: z.string(),
+        type: z.enum([
+          "DOCUMENT_APPROVED",
+          "DOCUMENT_REJECTED",
+          "DOCUMENT_MORE_DOCS_REQUESTED",
+          "LESSON_SCHEDULED",
+          "LESSON_CANCELLED",
+          "PAYMENT_RECEIVED",
+          "SYSTEM_ALERT",
+        ]),
         title: z.string(),
-        body: z.string(),
+        message: z.string(),
         data: z.any().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const user = await ctx.prisma.user.findUnique({
-        where: { id: input.userId },
-        select: { pushToken: true },
-      });
-
-      if (!user?.pushToken) {
-        console.log(`User ${input.userId} has no push token`);
-        return { success: false, error: "No push token" };
-      }
-
-      await sendPushNotification(
-        user.pushToken,
-        input.title,
-        input.body,
-        input.data
-      );
-
-      return { success: true };
-    }),
-
-  // Notificar instrutor sobre nova solicitação de aula
-  notifyInstructorNewLesson: protectedProcedure
-    .input(
-      z.object({
-        instructorId: z.string(),
-        lessonId: z.string(),
-        studentName: z.string(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const instructor = await ctx.prisma.instructor.findUnique({
-        where: { id: input.instructorId },
-        include: { user: true },
-      });
-
-      if (!instructor?.user.pushToken) {
-        return { success: false };
-      }
-
-      await sendPushNotification(
-        instructor.user.pushToken,
-        "Nova Solicitação de Aula",
-        `${input.studentName} solicitou uma aula com você!`,
-        {
-          type: "new_lesson_request",
-          lessonId: input.lessonId,
-        }
-      );
-
-      return { success: true };
-    }),
-
-  // Notificar aluno que instrutor aceitou a aula
-  notifyStudentLessonAccepted: protectedProcedure
-    .input(
-      z.object({
-        studentId: z.string(),
-        lessonId: z.string(),
-        instructorName: z.string(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const student = await ctx.prisma.student.findUnique({
-        where: { id: input.studentId },
-        include: { user: true },
-      });
-
-      if (!student?.user.pushToken) {
-        return { success: false };
-      }
-
-      await sendPushNotification(
-        student.user.pushToken,
-        "Aula Confirmada!",
-        `${input.instructorName} aceitou sua solicitação de aula!`,
-        {
-          type: "lesson_accepted",
-          lessonId: input.lessonId,
-        }
-      );
-
-      return { success: true };
-    }),
-
-  // Notificar aluno que aula está prestes a começar
-  notifyLessonStartingSoon: protectedProcedure
-    .input(
-      z.object({
-        studentId: z.string(),
-        lessonId: z.string(),
-        minutesUntilStart: z.number(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const student = await ctx.prisma.student.findUnique({
-        where: { id: input.studentId },
-        include: { user: true },
-      });
-
-      if (!student?.user.pushToken) {
-        return { success: false };
-      }
-
-      await sendPushNotification(
-        student.user.pushToken,
-        "Sua Aula Começa em Breve!",
-        `Sua aula começa em ${input.minutesUntilStart} minutos`,
-        {
-          type: "lesson_starting",
-          lessonId: input.lessonId,
-        }
-      );
-
-      return { success: true };
-    }),
-
-  // Notificar sobre SOS acionado
-  notifyEmergencySOS: protectedProcedure
-    .input(
-      z.object({
-        userIds: z.array(z.string()),
-        lessonId: z.string(),
-        latitude: z.number(),
-        longitude: z.number(),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const users = await ctx.prisma.user.findMany({
-        where: {
-          id: { in: input.userIds },
-          pushToken: { not: null },
+      const notification = await ctx.prisma.notification.create({
+        data: {
+          userId: input.userId,
+          type: input.type as NotificationType,
+          title: input.title,
+          message: input.message,
+          data: input.data,
         },
-        select: { pushToken: true },
       });
 
-      const notifications = users.map((user) =>
-        sendPushNotification(
-          user.pushToken!,
-          "🚨 EMERGÊNCIA - SOS ACIONADO",
-          "Um SOS foi acionado durante uma aula. Equipe notificada.",
-          {
-            type: "emergency_sos",
-            lessonId: input.lessonId,
-            latitude: input.latitude,
-            longitude: input.longitude,
-          }
-        )
-      );
+      return notification;
+    }),
 
-      await Promise.all(notifications);
+  // Obter contagem de não lidas
+  getUnreadCount: protectedProcedure
+    .query(async ({ ctx }) => {
+      const count = await ctx.prisma.notification.count({
+        where: {
+          userId: ctx.session.user.id,
+          read: false,
+        },
+      });
 
-      return { success: true, sent: users.length };
+      return { count };
     }),
 });

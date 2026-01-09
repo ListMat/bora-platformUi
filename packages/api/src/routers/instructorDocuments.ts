@@ -176,9 +176,27 @@ export const instructorDocumentsRouter = router({
                 },
             });
 
-            // TODO: Enviar notificação ao instrutor
-            // - Push notification
-            // - E-mail
+            // Buscar usuário do instrutor
+            const instructor = await ctx.prisma.instructor.findUnique({
+                where: { id: input.instructorId },
+                include: { user: true },
+            });
+
+            // Enviar notificação
+            if (instructor) {
+                await ctx.prisma.notification.create({
+                    data: {
+                        userId: instructor.userId,
+                        type: "DOCUMENT_APPROVED",
+                        title: "Documentos Aprovados! 🎉",
+                        message: input.analysisNote || "Seus documentos foram aprovados! Você já pode começar a dar aulas.",
+                        data: {
+                            documentId: document.id,
+                            instructorId: input.instructorId,
+                        },
+                    },
+                });
+            }
 
             return document;
         }),
@@ -210,9 +228,27 @@ export const instructorDocumentsRouter = router({
                 },
             });
 
-            // TODO: Enviar notificação ao instrutor
-            // - Push notification
-            // - E-mail
+            // Buscar usuário do instrutor
+            const instructor = await ctx.prisma.instructor.findUnique({
+                where: { id: input.instructorId },
+                include: { user: true },
+            });
+
+            // Enviar notificação
+            if (instructor) {
+                await ctx.prisma.notification.create({
+                    data: {
+                        userId: instructor.userId,
+                        type: "DOCUMENT_REJECTED",
+                        title: "Documentos Rejeitados",
+                        message: input.analysisNote,
+                        data: {
+                            documentId: document.id,
+                            instructorId: input.instructorId,
+                        },
+                    },
+                });
+            }
 
             return document;
         }),
@@ -236,9 +272,27 @@ export const instructorDocumentsRouter = router({
                 },
             });
 
-            // TODO: Enviar notificação ao instrutor
-            // - Push notification
-            // - E-mail
+            // Buscar usuário do instrutor
+            const instructor = await ctx.prisma.instructor.findUnique({
+                where: { id: input.instructorId },
+                include: { user: true },
+            });
+
+            // Enviar notificação
+            if (instructor) {
+                await ctx.prisma.notification.create({
+                    data: {
+                        userId: instructor.userId,
+                        type: "DOCUMENT_MORE_DOCS_REQUESTED",
+                        title: "Documentos Adicionais Necessários",
+                        message: input.analysisNote,
+                        data: {
+                            documentId: document.id,
+                            instructorId: input.instructorId,
+                        },
+                    },
+                });
+            }
 
             return document;
         }),
