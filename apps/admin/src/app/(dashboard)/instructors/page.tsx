@@ -471,7 +471,7 @@ export default function InstrutoresPage() {
                                     </div>
                                     <div className="p-4 bg-muted rounded-lg">
                                         <p className="text-2xl font-bold">
-                                            R$ {selectedInstructor.basePrice?.toFixed(2) || "0.00"}
+                                            R$ {selectedInstructor.basePrice ? Number(selectedInstructor.basePrice).toFixed(2) : "0.00"}
                                         </p>
                                         <p className="text-sm text-muted-foreground">Preço Base</p>
                                     </div>
