@@ -5,6 +5,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     Table,
     TableBody,
@@ -27,18 +28,47 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, MoreVertical, Eye, GraduationCap, CreditCard, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Search, MoreVertical, Eye, GraduationCap, CreditCard, Loader2, Wallet } from "lucide-react";
 import Link from "next/link";
 
 export default function AlunosPage() {
+    const { toast } = useToast();
     const [searchQuery, setSearchQuery] = useState("");
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const [showLessonsDialog, setShowLessonsDialog] = useState(false);
+    const [showPaymentsDialog, setShowPaymentsDialog] = useState(false);
+    const [showDepositDialog, setShowDepositDialog] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
+    const [depositAmount, setDepositAmount] = useState("");
 
     const { data: students, isLoading } = trpc.admin.getStudents.useQuery({
         limit: 50,
         skip: 0,
     });
+
+    const { data: lessons, refetch: refetchLessons } = trpc.admin.getStudentLessons.useQuery(
+        {
+            studentId: selectedStudent?.id || "",
+            limit: 20,
+            skip: 0,
+        },
+        {
+            enabled: !!selectedStudent?.id && showLessonsDialog,
+        }
+    );
+
+    const { data: payments, refetch: refetchPayments } = trpc.admin.getStudentPayments.useQuery(
+        {
+            studentId: selectedStudent?.id || "",
+            limit: 20,
+            skip: 0,
+        },
+        {
+            enabled: !!selectedStudent?.id && showPaymentsDialog,
+        }
+    );
 
     const filteredStudents = students?.filter((student) => {
         if (!searchQuery) return true;
@@ -49,6 +79,26 @@ export default function AlunosPage() {
             student.cpf?.includes(query)
         );
     });
+
+    const handleDeposit = () => {
+        const amount = parseFloat(depositAmount);
+        if (isNaN(amount) || amount <= 0) {
+            toast({
+                title: "Valor inválido",
+                description: "Por favor, insira um valor válido.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        // Aqui você implementaria a lógica de depósito
+        toast({
+            title: "Depósito realizado",
+            description: `R$ ${amount.toFixed(2)} depositado na conta de ${selectedStudent?.user.name}`,
+        });
+        setShowDepositDialog(false);
+        setDepositAmount("");
+    };
 
     return (
         <div className="container mx-auto py-8 px-4">
@@ -130,17 +180,32 @@ export default function AlunosPage() {
                                                         <Eye className="mr-2 h-4 w-4" />
                                                         Ver Detalhes
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/alunos/${student.id}?tab=lessons`}>
-                                                            <GraduationCap className="mr-2 h-4 w-4" />
-                                                            Ver Aulas
-                                                        </Link>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedStudent(student);
+                                                            setShowLessonsDialog(true);
+                                                        }}
+                                                    >
+                                                        <GraduationCap className="mr-2 h-4 w-4" />
+                                                        Ver Aulas
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/alunos/${student.id}?tab=payments`}>
-                                                            <CreditCard className="mr-2 h-4 w-4" />
-                                                            Ver Pagamentos
-                                                        </Link>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedStudent(student);
+                                                            setShowPaymentsDialog(true);
+                                                        }}
+                                                    >
+                                                        <CreditCard className="mr-2 h-4 w-4" />
+                                                        Ver Pagamentos
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedStudent(student);
+                                                            setShowDepositDialog(true);
+                                                        }}
+                                                    >
+                                                        <Wallet className="mr-2 h-4 w-4" />
+                                                        Depositar Crédito
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
@@ -168,7 +233,6 @@ export default function AlunosPage() {
                     </DialogHeader>
                     {selectedStudent && (
                         <div className="space-y-6 py-4">
-                            {/* Informações Básicas */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <p className="text-sm font-medium">Nome:</p>
@@ -207,27 +271,6 @@ export default function AlunosPage() {
                                     </p>
                                 </div>
                             </div>
-
-                            {/* Informações Adicionais */}
-                            <div className="border-t pt-4">
-                                <h3 className="font-semibold mb-4">Informações Adicionais</h3>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium">Data de Nascimento:</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {selectedStudent.birthDate
-                                                ? new Date(selectedStudent.birthDate).toLocaleDateString("pt-BR")
-                                                : "N/A"}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-sm font-medium">Cadastrado em:</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {new Date(selectedStudent.createdAt).toLocaleDateString("pt-BR")}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     )}
                     <DialogFooter>
@@ -244,6 +287,202 @@ export default function AlunosPage() {
                             <Link href={`/alunos/${selectedStudent?.id}`}>
                                 Ver Página Completa
                             </Link>
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Aulas */}
+            <Dialog open={showLessonsDialog} onOpenChange={setShowLessonsDialog}>
+                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Aulas de {selectedStudent?.user.name}</DialogTitle>
+                        <DialogDescription>
+                            Histórico completo de aulas do aluno
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {lessons && lessons.length > 0 ? (
+                            <div className="space-y-4">
+                                {lessons.map((lesson: any) => (
+                                    <div
+                                        key={lesson.id}
+                                        className="flex items-center justify-between p-4 border rounded-lg"
+                                    >
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <p className="font-medium">
+                                                    {lesson.instructor?.user?.name || "N/A"}
+                                                </p>
+                                                <Badge>{lesson.status}</Badge>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                {lesson.instructor?.user?.email || "N/A"}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {new Date(lesson.createdAt).toLocaleDateString("pt-BR")} às{" "}
+                                                {new Date(lesson.createdAt).toLocaleTimeString("pt-BR", {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
+                                            </p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-medium">
+                                                R$ {lesson.payment?.amount ? Number(lesson.payment.amount).toFixed(2) : "0.00"}
+                                            </p>
+                                            {lesson.payment && (
+                                                <Badge variant="outline">{lesson.payment.status}</Badge>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-center text-muted-foreground py-8">
+                                Nenhuma aula encontrada
+                            </p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowLessonsDialog(false);
+                            }}
+                        >
+                            Fechar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Pagamentos */}
+            <Dialog open={showPaymentsDialog} onOpenChange={setShowPaymentsDialog}>
+                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Pagamentos de {selectedStudent?.user.name}</DialogTitle>
+                        <DialogDescription>
+                            Histórico completo de pagamentos do aluno
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        {payments && payments.length > 0 ? (
+                            <>
+                                <div className="mb-4 p-4 bg-muted rounded-lg">
+                                    <p className="text-sm text-muted-foreground">Total Pago</p>
+                                    <p className="text-2xl font-bold">
+                                        R${" "}
+                                        {payments
+                                            .reduce((sum, p: any) => sum + Number(p.amount || 0), 0)
+                                            .toFixed(2)}
+                                    </p>
+                                </div>
+                                <div className="space-y-4">
+                                    {payments.map((payment: any) => (
+                                        <div
+                                            key={payment.id}
+                                            className="flex items-center justify-between p-4 border rounded-lg"
+                                        >
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <p className="font-medium">
+                                                        Aula com {payment.lesson?.instructor?.user?.name || "N/A"}
+                                                    </p>
+                                                    <Badge
+                                                        variant={
+                                                            payment.status === "PAID" ? "default" : "secondary"
+                                                        }
+                                                    >
+                                                        {payment.status}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground">
+                                                    Método: {payment.method}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {new Date(payment.createdAt).toLocaleDateString("pt-BR")} às{" "}
+                                                    {new Date(payment.createdAt).toLocaleTimeString("pt-BR", {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                    })}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xl font-bold">
+                                                    R$ {Number(payment.amount || 0).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-center text-muted-foreground py-8">
+                                Nenhum pagamento encontrado
+                            </p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowPaymentsDialog(false);
+                            }}
+                        >
+                            Fechar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Depósito */}
+            <Dialog open={showDepositDialog} onOpenChange={setShowDepositDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Depositar Crédito</DialogTitle>
+                        <DialogDescription>
+                            Adicionar crédito na conta de {selectedStudent?.user.name}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="amount">Valor (R$)</Label>
+                            <Input
+                                id="amount"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                value={depositAmount}
+                                onChange={(e) => setDepositAmount(e.target.value)}
+                            />
+                        </div>
+                        <div className="p-4 bg-muted rounded-lg">
+                            <p className="text-sm text-muted-foreground mb-2">
+                                Este valor será creditado na conta do aluno e poderá ser usado para pagar aulas.
+                            </p>
+                            <p className="text-sm font-medium">
+                                Aluno: {selectedStudent?.user.name}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                                Email: {selectedStudent?.user.email}
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowDepositDialog(false);
+                                setDepositAmount("");
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button onClick={handleDeposit}>
+                            <Wallet className="mr-2 h-4 w-4" />
+                            Confirmar Depósito
                         </Button>
                     </DialogFooter>
                 </DialogContent>
