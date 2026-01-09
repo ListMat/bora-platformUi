@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,7 +32,8 @@ import {
     ExternalLink,
 } from "lucide-react";
 
-export default function AprovacaoDetalhesPage({ params }: { params: { id: string } }) {
+export default function AprovacaoDetalhesPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
     const { toast } = useToast();
 
@@ -46,7 +47,7 @@ export default function AprovacaoDetalhesPage({ params }: { params: { id: string
         limit: 1000,
     });
 
-    const document = documents?.documents.find(d => d.instructorId === params.id);
+    const document = documents?.documents.find(d => d.instructorId === id);
     const instructor = document?.instructor;
 
     // Mutations
@@ -103,7 +104,7 @@ export default function AprovacaoDetalhesPage({ params }: { params: { id: string
 
     const handleApprove = () => {
         approveMutation.mutate({
-            instructorId: params.id,
+            instructorId: id,
             analysisNote: analysisNote || undefined,
         });
     };
@@ -118,7 +119,7 @@ export default function AprovacaoDetalhesPage({ params }: { params: { id: string
             return;
         }
         rejectMutation.mutate({
-            instructorId: params.id,
+            instructorId: id,
             analysisNote,
         });
     };
@@ -133,7 +134,7 @@ export default function AprovacaoDetalhesPage({ params }: { params: { id: string
             return;
         }
         requestMoreDocsMutation.mutate({
-            instructorId: params.id,
+            instructorId: id,
             analysisNote,
         });
     };

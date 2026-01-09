@@ -1,5 +1,6 @@
 "use client";
 
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
     User,
@@ -32,14 +32,15 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export default function InstructorDetailsPage({ params }: { params: { id: string } }) {
+export default function InstructorDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
     const { toast } = useToast();
     const [showSuspendDialog, setShowSuspendDialog] = useState(false);
     const [showActivateDialog, setShowActivateDialog] = useState(false);
 
     const { data: instructor, isLoading, refetch } = trpc.admin.getInstructorById.useQuery({
-        id: params.id,
+        id,
     });
 
     const suspendMutation = trpc.instructor.suspend.useMutation({
@@ -79,11 +80,11 @@ export default function InstructorDetailsPage({ params }: { params: { id: string
     });
 
     const handleSuspend = () => {
-        suspendMutation.mutate({ instructorId: params.id });
+        suspendMutation.mutate({ instructorId: id });
     };
 
     const handleActivate = () => {
-        activateMutation.mutate({ instructorId: params.id });
+        activateMutation.mutate({ instructorId: id });
     };
 
     if (isLoading) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,23 +20,24 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export default function StudentDetailsPage({ params }: { params: { id: string } }) {
+export default function StudentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
     const searchParams = useSearchParams();
     const defaultTab = searchParams.get("tab") || "info";
 
     const { data: student, isLoading } = trpc.admin.getStudentById.useQuery({
-        id: params.id,
+        id,
     });
 
     const { data: lessons } = trpc.admin.getStudentLessons.useQuery({
-        studentId: params.id,
+        studentId: id,
         limit: 20,
         skip: 0,
     });
 
     const { data: payments } = trpc.admin.getStudentPayments.useQuery({
-        studentId: params.id,
+        studentId: id,
         limit: 20,
         skip: 0,
     });
