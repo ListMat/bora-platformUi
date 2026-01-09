@@ -16,6 +16,7 @@ import { adminRouter } from "./routers/admin";
 import { availabilityRouter } from "./routers/availability";
 import { mercadopagoRouter } from "./routers/mercadopago";
 import { authRouter } from "./routers/auth";
+import { instructorDocumentsRouter } from "./routers/instructorDocuments";
 
 export const appRouter = router({
   user: userRouter,
@@ -35,6 +36,7 @@ export const appRouter = router({
   availability: availabilityRouter,
   mercadopago: mercadopagoRouter,
   auth: authRouter,
+  instructorDocuments: instructorDocumentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

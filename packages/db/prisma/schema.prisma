@@ -104,6 +104,13 @@ enum ComplaintStatus {
   DISMISSED
 }
 
+enum DocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PENDING_MORE_DOCS
+}
+
 // ==================== MODELS ====================
 
 model User {
@@ -246,6 +253,7 @@ model Instructor {
   ratings           Rating[]
   skillEvaluations  SkillEvaluation[]
   complaintsReceived Complaint[]
+  documents         InstructorDocument?
 
   @@index([userId])
   @@index([status])
@@ -264,6 +272,29 @@ model InstructorAvailability {
 
   @@index([instructorId])
   @@map("instructor_availability")
+}
+
+model InstructorDocument {
+  id                  String         @id @default(cuid())
+  instructorId        String         @unique
+  cnhFrontUrl         String?
+  cnhBackUrl          String?
+  certificateUrl      String?
+  status              DocumentStatus @default(PENDING)
+  analysisNote        String?        @db.Text
+  confirmedAutonomous Boolean        @default(false)
+  submittedAt         DateTime?
+  reviewedAt          DateTime?
+  reviewedBy          String?
+  
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  
+  instructor          Instructor     @relation(fields: [instructorId], references: [id], onDelete: Cascade)
+  
+  @@index([status])
+  @@index([instructorId])
+  @@map("instructor_documents")
 }
 
 model Lesson {
