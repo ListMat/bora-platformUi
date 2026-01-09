@@ -1,124 +1,253 @@
-'use client';
+"use client";
 
-import { DataTable } from "@/components/ui/data-table";
-import { columns } from "./columns";
-import { api } from "@/lib/api";
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, Users } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Search, MoreVertical, Eye, GraduationCap, CreditCard, Loader2 } from "lucide-react";
+import Link from "next/link";
 
-export default function StudentsPage() {
-    const { data: students, isLoading } = api.admin.getStudents.useQuery();
+export default function AlunosPage() {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
-    // Estatísticas rápidas
-    const totalStudents = students?.length || 0;
-    const totalBalance = students?.reduce((sum, s) => sum + Number(s.walletBalance), 0) || 0;
-    const totalPoints = students?.reduce((sum, s) => sum + s.points, 0) || 0;
+    const { data: students, isLoading } = trpc.admin.getStudents.useQuery({
+        limit: 50,
+        skip: 0,
+    });
+
+    const filteredStudents = students?.filter((student) => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+            student.user.name?.toLowerCase().includes(query) ||
+            student.user.email?.toLowerCase().includes(query) ||
+            student.cpf?.includes(query)
+        );
+    });
 
     return (
-        <div className="flex-1 space-y-4 p-8 pt-6">
+        <div className="container mx-auto py-8 px-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Alunos</h2>
-                    <p className="text-muted-foreground">
-                        Gerencie os alunos cadastrados na plataforma
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm">
-                        <Download className="mr-2 h-4 w-4" />
-                        Exportar
-                    </Button>
-                    <Button size="sm">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Adicionar Aluno
-                    </Button>
-                </div>
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold mb-2">Alunos</h1>
+                <p className="text-muted-foreground">
+                    Gerencie todos os alunos da plataforma
+                </p>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total de Alunos
-                        </CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalStudents}</div>
-                        <p className="text-xs text-muted-foreground">
-                            Alunos cadastrados
-                        </p>
-                    </CardContent>
-                </Card>
+            {/* Filtros */}
+            <Card className="mb-6">
+                <CardHeader>
+                    <CardTitle>Filtros</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Buscar por nome, email ou CPF..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10"
+                        />
+                    </div>
+                </CardContent>
+            </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Saldo Total
-                        </CardTitle>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            className="h-4 w-4 text-muted-foreground"
-                        >
-                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                        </svg>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            R$ {totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            {/* Tabela */}
+            <Card>
+                <CardContent className="p-0">
+                    {isLoading ? (
+                        <div className="flex justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Em carteiras
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Pontos Totais
-                        </CardTitle>
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            className="h-4 w-4 text-muted-foreground"
-                        >
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {totalPoints.toLocaleString('pt-BR')}
+                    ) : filteredStudents && filteredStudents.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Nome</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>CPF</TableHead>
+                                    <TableHead>Cidade</TableHead>
+                                    <TableHead>Total de Aulas</TableHead>
+                                    <TableHead>Cadastrado em</TableHead>
+                                    <TableHead className="text-right">Ações</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredStudents.map((student) => (
+                                    <TableRow key={student.id}>
+                                        <TableCell className="font-medium">
+                                            {student.user.name || "N/A"}
+                                        </TableCell>
+                                        <TableCell>{student.user.email}</TableCell>
+                                        <TableCell>{student.cpf || "N/A"}</TableCell>
+                                        <TableCell>
+                                            {student.city || "N/A"}, {student.state || "N/A"}
+                                        </TableCell>
+                                        <TableCell>{student._count?.lessons || 0}</TableCell>
+                                        <TableCell>
+                                            {new Date(student.createdAt).toLocaleDateString("pt-BR")}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedStudent(student);
+                                                            setShowDetailsDialog(true);
+                                                        }}
+                                                    >
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        Ver Detalhes
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/alunos/${student.id}?tab=lessons`}>
+                                                            <GraduationCap className="mr-2 h-4 w-4" />
+                                                            Ver Aulas
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/alunos/${student.id}?tab=payments`}>
+                                                            <CreditCard className="mr-2 h-4 w-4" />
+                                                            Ver Pagamentos
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <div className="py-12 text-center text-muted-foreground">
+                            Nenhum aluno encontrado
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                            Pontos acumulados
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
+                    )}
+                </CardContent>
+            </Card>
 
-            {/* Data Table */}
-            <DataTable
-                columns={columns}
-                data={students || []}
-                isLoading={isLoading}
-                searchKey="name"
-                searchPlaceholder="Buscar por nome..."
-            />
+            {/* Modal de Detalhes */}
+            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Detalhes do Aluno</DialogTitle>
+                        <DialogDescription>
+                            Informações completas do aluno
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedStudent && (
+                        <div className="space-y-6 py-4">
+                            {/* Informações Básicas */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Nome:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedStudent.user.name || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Email:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedStudent.user.email}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">CPF:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedStudent.cpf || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Telefone:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedStudent.user.phone || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Cidade:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedStudent.city || "N/A"}, {selectedStudent.state || "N/A"}
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Total de Aulas:</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {selectedStudent._count?.lessons || 0}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Informações Adicionais */}
+                            <div className="border-t pt-4">
+                                <h3 className="font-semibold mb-4">Informações Adicionais</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">Data de Nascimento:</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedStudent.birthDate
+                                                ? new Date(selectedStudent.birthDate).toLocaleDateString("pt-BR")
+                                                : "N/A"}
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-sm font-medium">Cadastrado em:</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {new Date(selectedStudent.createdAt).toLocaleDateString("pt-BR")}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowDetailsDialog(false);
+                                setSelectedStudent(null);
+                            }}
+                        >
+                            Fechar
+                        </Button>
+                        <Button asChild>
+                            <Link href={`/alunos/${selectedStudent?.id}`}>
+                                Ver Página Completa
+                            </Link>
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
