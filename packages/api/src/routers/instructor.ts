@@ -1185,5 +1185,61 @@ export const instructorRouter = router({
 
       return withdrawal;
     }),
+
+  // Admin: Suspender instrutor
+  suspend: adminProcedure
+    .input(
+      z.object({
+        instructorId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const instructor = await ctx.prisma.instructor.update({
+        where: { id: input.instructorId },
+        data: {
+          status: InstructorStatus.SUSPENDED,
+        },
+      });
+
+      // Criar notificação
+      await ctx.prisma.notification.create({
+        data: {
+          userId: instructor.userId,
+          type: "SYSTEM_ALERT",
+          title: "Conta Suspensa",
+          message: "Sua conta foi suspensa. Entre em contato com o suporte para mais informações.",
+        },
+      });
+
+      return instructor;
+    }),
+
+  // Admin: Aprovar/Reativar instrutor
+  approve: adminProcedure
+    .input(
+      z.object({
+        instructorId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const instructor = await ctx.prisma.instructor.update({
+        where: { id: input.instructorId },
+        data: {
+          status: InstructorStatus.ACTIVE,
+        },
+      });
+
+      // Criar notificação
+      await ctx.prisma.notification.create({
+        data: {
+          userId: instructor.userId,
+          type: "SYSTEM_ALERT",
+          title: "Conta Ativada",
+          message: "Sua conta foi ativada! Você já pode começar a dar aulas.",
+        },
+      });
+
+      return instructor;
+    }),
 });
 
