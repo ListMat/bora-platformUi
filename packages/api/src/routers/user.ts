@@ -215,8 +215,12 @@ export const userRouter = router({
         referred: {
           select: {
             id: true,
-            name: true,
-            email: true,
+            user: {
+              select: {
+                name: true,
+                email: true,
+              },
+            },
             createdAt: true,
           },
         },

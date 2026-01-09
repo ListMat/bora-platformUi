@@ -90,10 +90,14 @@ export default function ChatWindow({
                 return [...prev, message];
             });
 
-            // Se a mensagem não é minha, marcar como lida
+            // Se a mensagem não é minha e está visível, marcar como lida
             if (message.senderId !== currentUserId) {
-                // markAsReadMutation.mutate({ messageId: message.id });
-                // TODO: Implementar lógica de visibilidade/foco para marcar como lida apenas se visto
+                // Marcar como lida após um pequeno delay para garantir que está visível
+                setTimeout(() => {
+                    if (document.hasFocus() && scrollRef.current) {
+                        markAsReadMutation.mutate({ messageId: message.id });
+                    }
+                }, 500);
             }
         });
 

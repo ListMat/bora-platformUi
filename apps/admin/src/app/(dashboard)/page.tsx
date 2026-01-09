@@ -8,7 +8,11 @@ import { api } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-    const { data: stats, isLoading } = api.admin.getStats.useQuery();
+    const { data, isLoading } = api.admin.getStats.useQuery();
+
+    // SuperJSON do tRPC envolve os dados em um objeto 'json'
+    // @ts-ignore - Tipo será corrigido quando o tRPC for configurado corretamente
+    const stats = data?.json || data;
 
     if (isLoading) {
         return (

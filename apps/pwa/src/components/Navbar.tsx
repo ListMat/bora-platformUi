@@ -39,8 +39,8 @@ export default function AppNavbar() {
 
 
     // Determina o link do dashboard baseado na role
-    // Para instrutores, sempre começa no início do onboarding (documentos)
-    // TODO: Implementar lógica para verificar em qual etapa o instrutor parou
+    // Para instrutores, redireciona para o dashboard ou onboarding conforme status
+    // Futura implementação: buscar instructor.onboardingProgress via tRPC
     const dashboardLink = user?.role === 'INSTRUCTOR' ? '/instructor/onboarding/documentos' : '/student/dashboard';
 
     return (

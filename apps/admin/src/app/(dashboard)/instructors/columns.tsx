@@ -47,12 +47,28 @@ function ActionsCell({ instructor }: { instructor: Instructor }) {
             toast({ title: "Instrutor aprovado com sucesso!" });
             utils.admin.getInstructors.invalidate();
         },
+        onError: (error) => {
+            console.error('[ActionsCell] Erro ao aprovar instrutor:', error);
+            toast({
+                title: "Erro ao aprovar instrutor",
+                description: error.message || "Ocorreu um erro desconhecido",
+                variant: "destructive",
+            });
+        },
     });
 
     const suspendMutation = api.admin.suspendInstructor.useMutation({
         onSuccess: () => {
             toast({ title: "Instrutor suspenso com sucesso!" });
             utils.admin.getInstructors.invalidate();
+        },
+        onError: (error) => {
+            console.error('[ActionsCell] Erro ao suspender instrutor:', error);
+            toast({
+                title: "Erro ao suspender instrutor",
+                description: error.message || "Ocorreu um erro desconhecido",
+                variant: "destructive",
+            });
         },
     });
 
@@ -72,7 +88,10 @@ function ActionsCell({ instructor }: { instructor: Instructor }) {
                 <DropdownMenuSeparator />
                 {instructor.status === "PENDING_VERIFICATION" && (
                     <DropdownMenuItem
-                        onClick={() => approveMutation.mutate({ id: instructor.id })}
+                        onClick={() => {
+                            console.log('[ActionsCell] Aprovando instrutor:', instructor.id);
+                            approveMutation.mutate({ id: instructor.id });
+                        }}
                     >
                         <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
                         Aprovar
@@ -80,7 +99,10 @@ function ActionsCell({ instructor }: { instructor: Instructor }) {
                 )}
                 {instructor.status === "ACTIVE" && (
                     <DropdownMenuItem
-                        onClick={() => suspendMutation.mutate({ id: instructor.id })}
+                        onClick={() => {
+                            console.log('[ActionsCell] Suspendendo instrutor:', instructor.id);
+                            suspendMutation.mutate({ id: instructor.id });
+                        }}
                     >
                         <Ban className="mr-2 h-4 w-4 text-red-600" />
                         Suspender

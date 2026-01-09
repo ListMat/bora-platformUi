@@ -116,6 +116,7 @@ model User {
   password      String?
   role          UserRole  @default(STUDENT)
   pushToken     String?
+  // notificationPreferences Json? @default("{\"email\":true,\"push\":true,\"sms\":false}")
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -296,7 +297,7 @@ model Lesson {
   pixGeneratedAt   DateTime?
   pixExpiresAt     DateTime?
   pixPaidAt        DateTime?
-  paymentStatus    String       @default("PENDING")
+  paymentStatus    PaymentStatus @default(PENDING)
   instructorNotes  String?
   studentNotes     String?
   
@@ -385,14 +386,15 @@ model Rating {
 model Referral {
   id         String   @id @default(cuid())
   referrerId String
-  referredId String   @unique
+  referredId String?   @unique
+  code       String   @unique
   rewardAmount Decimal @default(0) @db.Decimal(10, 2)
   rewardPaid   Boolean @default(false)
   
   createdAt  DateTime @default(now())
 
   referrer   Student  @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
-  referred   Student  @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+  referred   Student?  @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
 
   @@index([referrerId])
   @@map("referrals")

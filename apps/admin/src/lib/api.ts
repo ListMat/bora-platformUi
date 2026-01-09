@@ -23,6 +23,7 @@ export function getClientConfig() {
             }),
             httpBatchLink({
                 url: `${getBaseUrl()}/api/trpc`,
+                transformer: superjson,
             }),
         ],
     };

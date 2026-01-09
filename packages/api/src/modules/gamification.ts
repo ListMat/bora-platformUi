@@ -172,14 +172,14 @@ export async function awardMedal(userId: string, medalId: string): Promise<void>
     throw new Error("Student not found");
   }
 
-  const medals = (student.medals as string[]) || [];
+  const badges = (student.badges as string[]) || [];
 
-  if (!medals.includes(medalId)) {
-    medals.push(medalId);
+  if (!badges.includes(medalId)) {
+    badges.push(medalId);
 
     await prisma.student.update({
       where: { id: student.id },
-      data: { medals },
+      data: { badges },
     });
 
     // Registrar no log
@@ -222,7 +222,9 @@ export async function checkLessonMedals(userId: string): Promise<void> {
 export async function checkRatingMedals(userId: string): Promise<void> {
   const perfectRatings = await prisma.rating.count({
     where: {
-      ratedId: userId,
+      // TODO: Implementar verificação correta de avaliação recebida. 
+      // O campo 'ratedId' não existe no modelo Rating atual.
+      // ratedId: userId, 
       rating: 5,
     },
   });
@@ -318,9 +320,9 @@ export async function getGamificationInfo(userId: string) {
   const currentLevel = LEVELS.find((l) => l.level === student.level) || LEVELS[0];
   const nextLevel = LEVELS.find((l) => l.level === student.level + 1);
 
-  const medals = (student.medals as string[]) || [];
+  const badges = (student.badges as string[]) || [];
   const unlockedMedals = Object.values(MEDALS).filter((m) =>
-    medals.includes(m.id)
+    badges.includes(m.id)
   );
 
   return {

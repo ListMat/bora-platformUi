@@ -4,37 +4,85 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 export const adminRouter = createTRPCRouter({
     // Dashboard Stats
     getStats: protectedProcedure.query(async ({ ctx }) => {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
         const [
             totalStudents,
+            studentsLastMonth,
             activeInstructors,
+            activeInstructorsLastMonth,
             lessonsToday,
             lessonsPending,
             activeSOS,
             monthlyRevenue,
+            lastMonthRevenue,
         ] = await Promise.all([
+            // Total de alunos atual
             ctx.prisma.student.count(),
+            // Total de alunos até o mês passado
+            ctx.prisma.student.count({
+                where: { createdAt: { lt: startOfMonth } }
+            }),
+            // Instrutores ativos agora
             ctx.prisma.instructor.count({ where: { status: "ACTIVE" } }),
+            // Instrutores ativos no mês passado
+            ctx.prisma.instructor.count({
+                where: {
+                    status: "ACTIVE",
+                    createdAt: { lt: startOfMonth }
+                }
+            }),
+            // Aulas hoje
             ctx.prisma.lesson.count({
                 where: {
                     scheduledAt: {
-                        gte: new Date(new Date().setHours(0, 0, 0, 0)),
-                        lt: new Date(new Date().setHours(23, 59, 59, 999)),
+                        gte: new Date(now.setHours(0, 0, 0, 0)),
+                        lt: new Date(now.setHours(23, 59, 59, 999)),
                     },
                 },
             }),
+            // Aulas pendentes
             ctx.prisma.lesson.count({ where: { status: "PENDING" } }),
+            // SOS ativos (placeholder)
             0,
+            // Receita do mês atual
+            ctx.prisma.payment.aggregate({
+                where: {
+                    status: "COMPLETED",
+                    createdAt: { gte: startOfMonth },
+                },
+                _sum: { amount: true },
+            }),
+            // Receita do mês passado
             ctx.prisma.payment.aggregate({
                 where: {
                     status: "COMPLETED",
                     createdAt: {
-                        gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                        gte: startOfLastMonth,
+                        lt: startOfMonth,
                     },
                 },
                 _sum: { amount: true },
             }),
         ]);
 
+        // Calcular porcentagens de crescimento
+        const calculateGrowth = (current: number, previous: number) => {
+            if (previous === 0) return current > 0 ? 100 : 0;
+            return Math.round(((current - previous) / previous) * 100);
+        };
+
+        const studentsGrowth = calculateGrowth(totalStudents, studentsLastMonth);
+        const instructorsGrowth = calculateGrowth(activeInstructors, activeInstructorsLastMonth);
+        const revenueGrowth = calculateGrowth(
+            Number(monthlyRevenue._sum.amount || 0),
+            Number(lastMonthRevenue._sum.amount || 0)
+        );
+
+        // Receita por mês (últimos 12 meses)
         const revenueByMonth = await Promise.all(
             Array.from({ length: 12 }, async (_, i) => {
                 const date = new Date();
@@ -57,20 +105,44 @@ export const adminRouter = createTRPCRouter({
             })
         );
 
+        // Atividades recentes
         const recentActivities = await ctx.prisma.activityLog.findMany({
             take: 10,
             orderBy: { createdAt: "desc" },
             include: { user: { select: { name: true, image: true } } },
         });
 
+        // Taxa de conversão (aulas agendadas vs concluídas no mês)
+        const [scheduledLessons, completedLessons] = await Promise.all([
+            ctx.prisma.lesson.count({
+                where: {
+                    createdAt: { gte: startOfMonth },
+                    status: { in: ["SCHEDULED", "FINISHED"] }
+                }
+            }),
+            ctx.prisma.lesson.count({
+                where: {
+                    createdAt: { gte: startOfMonth },
+                    status: "FINISHED"
+                }
+            }),
+        ]);
+
+        const conversionRate = scheduledLessons > 0
+            ? Math.round((completedLessons / scheduledLessons) * 100)
+            : 0;
+
         return {
             totalStudents,
+            studentsGrowth,
             activeInstructors,
+            instructorsGrowth,
             lessonsToday,
             lessonsPending,
             activeSOS,
             monthlyRevenue: Number(monthlyRevenue._sum.amount || 0),
-            conversionRate: 75,
+            revenueGrowth,
+            conversionRate,
             revenueByMonth: revenueByMonth.reverse(),
             recentActivities: recentActivities.map((activity) => ({
                 id: activity.id,
@@ -106,10 +178,34 @@ export const adminRouter = createTRPCRouter({
     approveInstructor: protectedProcedure
         .input(z.object({ id: z.string() }))
         .mutation(async ({ ctx, input }) => {
-            return ctx.prisma.instructor.update({
-                where: { id: input.id },
-                data: { status: "ACTIVE" },
-            });
+            console.log('[approveInstructor] Recebido ID:', input.id);
+
+            if (!input.id) {
+                throw new Error('ID do instrutor é obrigatório');
+            }
+
+            try {
+                const instructor = await ctx.prisma.instructor.findUnique({
+                    where: { id: input.id },
+                });
+
+                if (!instructor) {
+                    throw new Error(`Instrutor com ID ${input.id} não encontrado`);
+                }
+
+                console.log('[approveInstructor] Instrutor encontrado:', instructor.id);
+
+                const updated = await ctx.prisma.instructor.update({
+                    where: { id: input.id },
+                    data: { status: "ACTIVE" },
+                });
+
+                console.log('[approveInstructor] Instrutor aprovado com sucesso:', updated.id);
+                return updated;
+            } catch (error) {
+                console.error('[approveInstructor] Erro:', error);
+                throw error;
+            }
         }),
 
     suspendInstructor: protectedProcedure

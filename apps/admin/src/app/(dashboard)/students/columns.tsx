@@ -1,91 +1,114 @@
-"use client";
+'use client';
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StudentActions } from "./student-actions";
+import { Button } from "@/components/ui/button";
+import { MoreHorizontal, Mail, Phone } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// Tipo inferido do retorno da API (simplificado para UI)
 export type Student = {
     id: string;
-    userId: string;
-    cpf: string | null;
-    points: number;
-    level: number;
-    walletBalance: any; // Decimal do Prisma costuma vir como string ou object
-    createdAt: Date;
     user: {
         name: string | null;
-        email: string | null;
+        email: string;
         image: string | null;
+        phone: string | null;
     };
+    level: number;
+    points: number;
+    walletBalance: number;
+    createdAt: Date;
 };
 
 export const columns: ColumnDef<Student>[] = [
     {
-        id: "select",
-        header: ({ table }) => (
-            <Checkbox
-                checked={table.getIsAllPageRowsSelected()}
-                onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-                aria-label="Select all"
-            />
-        ),
-        cell: ({ row }) => (
-            <Checkbox
-                checked={row.getIsSelected()}
-                onCheckedChange={(value) => row.toggleSelected(!!value)}
-                aria-label="Select row"
-            />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-    },
-    {
-        id: "userName",
-        accessorFn: (row) => row.user.name || "Sem Nome",
+        id: "name",
+        accessorFn: (row) => row.user.name,
         header: "Aluno",
         cell: ({ row }) => {
-            const user = row.original.user;
+            const student = row.original;
+            const initials = student.user.name
+                ?.split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2) || "AL";
+
             return (
                 <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9">
-                        <AvatarImage src={user.image || ""} alt={user.name || ""} />
-                        <AvatarFallback>{(user.name || "A").slice(0, 2).toUpperCase()}</AvatarFallback>
+                    <Avatar className="h-10 w-10">
+                        <AvatarImage src={student.user.image || undefined} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {initials}
+                        </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                        <span className="font-medium">{user.name || "Sem Nome"}</span>
-                        <span className="text-xs text-muted-foreground">{user.email}</span>
+                    <div>
+                        <div className="font-medium">{student.user.name || "Sem nome"}</div>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {student.user.email}
+                        </div>
                     </div>
                 </div>
             );
         },
     },
     {
-        accessorKey: "cpf",
-        header: "CPF",
-        cell: ({ row }) => row.original.cpf || "-",
+        accessorKey: "user.phone",
+        header: "Telefone",
+        cell: ({ row }) => {
+            const phone = row.original.user.phone;
+            if (!phone) return <span className="text-muted-foreground">-</span>;
+            return (
+                <div className="flex items-center gap-1 text-sm">
+                    <Phone className="h-3 w-3 text-muted-foreground" />
+                    {phone}
+                </div>
+            );
+        },
     },
     {
         accessorKey: "level",
         header: "Nível",
-        cell: ({ row }) => (
-            <div className="flex items-center gap-2">
-                <Badge variant="outline">Nível {row.original.level}</Badge>
-                <span className="text-xs text-muted-foreground">{row.original.points} pts</span>
-            </div>
-        ),
+        cell: ({ row }) => {
+            const level = row.getValue("level") as number;
+            return (
+                <Badge variant="secondary" className="font-semibold">
+                    Nível {level}
+                </Badge>
+            );
+        },
+    },
+    {
+        accessorKey: "points",
+        header: "Pontos",
+        cell: ({ row }) => {
+            const points = row.getValue("points") as number;
+            return (
+                <div className="flex items-center gap-1">
+                    <span className="font-medium">{points.toLocaleString('pt-BR')}</span>
+                    <span className="text-xs text-muted-foreground">pts</span>
+                </div>
+            );
+        },
     },
     {
         accessorKey: "walletBalance",
         header: "Saldo",
         cell: ({ row }) => {
-            const balance = Number(row.original.walletBalance || 0);
+            const balance = row.getValue("walletBalance") as number;
             return (
-                <span className={balance > 0 ? "text-green-600 font-medium" : "text-muted-foreground"}>
-                    {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(balance)}
-                </span>
+                <div className="font-medium">
+                    R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
             );
         },
     },
@@ -93,11 +116,45 @@ export const columns: ColumnDef<Student>[] = [
         accessorKey: "createdAt",
         header: "Cadastro",
         cell: ({ row }) => {
-            return new Date(row.original.createdAt).toLocaleDateString("pt-BR");
+            const date = row.getValue("createdAt") as Date;
+            return (
+                <div className="text-sm text-muted-foreground">
+                    {new Date(date).toLocaleDateString('pt-BR')}
+                </div>
+            );
         },
     },
     {
         id: "actions",
-        cell: ({ row }) => <StudentActions student={row.original} />,
+        cell: ({ row }) => {
+            const student = row.original;
+
+            return (
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Abrir menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                        <DropdownMenuItem
+                            onClick={() => navigator.clipboard.writeText(student.id)}
+                        >
+                            Copiar ID
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>Ver detalhes</DropdownMenuItem>
+                        <DropdownMenuItem>Ver aulas</DropdownMenuItem>
+                        <DropdownMenuItem>Ver pagamentos</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive">
+                            Suspender conta
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            );
+        },
     },
 ];

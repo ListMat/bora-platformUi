@@ -8,18 +8,23 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ stats }: StatsCardsProps) {
+    const formatGrowth = (growth: number) => {
+        const sign = growth >= 0 ? '+' : '';
+        return `${sign}${growth}% do mês passado`;
+    };
+
     const cards = [
         {
             title: "Total de Alunos",
             value: stats?.totalStudents || 0,
-            change: "+12% do mês passado",
+            change: formatGrowth(stats?.studentsGrowth || 0),
             icon: Users,
             color: "text-blue-600",
         },
         {
             title: "Instrutores Ativos",
             value: stats?.activeInstructors || 0,
-            change: "+5% do mês passado",
+            change: formatGrowth(stats?.instructorsGrowth || 0),
             icon: GraduationCap,
             color: "text-green-600",
         },
@@ -32,15 +37,15 @@ export function StatsCards({ stats }: StatsCardsProps) {
         },
         {
             title: "Receita do Mês",
-            value: `R$ ${(stats?.monthlyRevenue || 0).toLocaleString('pt-BR')}`,
-            change: "+18% do mês passado",
+            value: `R$ ${(stats?.monthlyRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            change: formatGrowth(stats?.revenueGrowth || 0),
             icon: DollarSign,
             color: "text-emerald-600",
         },
         {
             title: "Taxa de Conversão",
             value: `${stats?.conversionRate || 0}%`,
-            change: "+2.5% do mês passado",
+            change: "Aulas concluídas vs agendadas",
             icon: TrendingUp,
             color: "text-purple-600",
         },

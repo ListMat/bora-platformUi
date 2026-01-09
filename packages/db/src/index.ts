@@ -28,11 +28,11 @@ if (process.env.NODE_ENV === "development") {
 }
 
 export const prisma =
-  global.prisma ||
+  (globalThis as any).prisma ||
   new PrismaClient(prismaClientOptions);
 
 if (process.env.NODE_ENV !== "production") {
-  global.prisma = prisma;
+  (globalThis as any).prisma = prisma;
 }
 
 // Export all types and enums from Prisma
